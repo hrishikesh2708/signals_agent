@@ -1,0 +1,8 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "signals_agent": "./app/graph/graph.py:build_studio_graph"
+  },
+  "env": ".env",
+  "python_version": "3.11"
+}
