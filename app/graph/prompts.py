@@ -59,11 +59,11 @@ SCOPE_FALLBACK_BY_KIND: dict[str, str] = {
     ),
     "greeting": (
         "Hi {user_name}! I can help you connect data sources to ad destinations. "
-        "For example: \"Send Salesforce offline conversions to Meta Conversions API\"."
+        'For example: "Send Salesforce offline conversions to Meta Conversions API".'
     ),
     "redirect": (
         "Hi {user_name}, I focus on marketing-data integrations such as CRM to Meta or Google. "
-        "Try something like: \"Sync HubSpot leads to Google Ads\"."
+        'Try something like: "Sync HubSpot leads to Google Ads".'
     ),
 }
 

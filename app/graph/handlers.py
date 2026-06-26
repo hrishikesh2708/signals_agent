@@ -51,7 +51,9 @@ SIGNAL_KEYWORDS: dict[str, list[str]] = {
 
 
 def _format_source_lines() -> str:
-    return "\n".join(f'  "{source.id}"  ({source.display_name})' for source in sources) or "  (none)"
+    return (
+        "\n".join(f'  "{source.id}"  ({source.display_name})' for source in sources) or "  (none)"
+    )
 
 
 def _format_destination_lines() -> str:
@@ -197,11 +199,6 @@ async def compose_scope_reply(
         content = response.content
         if isinstance(content, str) and content.strip():
             return content.strip()
-        if isinstance(content, list):
-            text_parts = [block.get("text", "") for block in content if isinstance(block, dict)]
-            joined = "".join(text_parts).strip()
-            if joined:
-                return joined
     except Exception:
         logger.exception("compose_scope_reply: LLM call failed")
 
