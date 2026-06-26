@@ -54,17 +54,38 @@ Studio loads the `signals_agent` graph defined in [`langgraph.json`](langgraph.j
 
 **No Docker or Postgres required for Studio.** Checkpointing is in-memory during local development.
 
+### Studio input (pass state on each invoke)
+
+Paste this into the Studio **Input** panel (adjust as needed):
+
+```json
+{
+  "messages": [{"role": "human", "content": "hello"}],
+  "user_name": "Hrishikesh"
+}
+```
+
+See [`studio_input.example.json`](studio_input.example.json) for a copy-paste template.
+
+After the run, open the run’s **State → Output** (or `__end__` in the trace) to see the full merged state: `messages`, `user_name`, and `scope`.
+
 ## CLI (multi-turn testing)
 
 Invoke the graph from the command line with in-memory checkpointing:
 
 ```bash
-# Single message
-uv run python -m app.main --message "hello"
+# Single message with user name
+uv run python -m app.main -m "hello" -u "Hrishikesh"
+
+# Or set a default in .env: SIGNALS_DEFAULT_USER_NAME=Hrishikesh
+uv run python -m app.main -m "hello"
+
+# Print full merged state (not just the last reply)
+uv run python -m app.main -m "hello" -u "Hrishikesh" --dump-state
 
 # Multi-turn — reuse the same thread ID across invocations
-uv run python -m app.main --message "hello" --thread-id dev-1
-uv run python -m app.main --message "what did I just say?" --thread-id dev-1
+uv run python -m app.main -m "hello" -u "Hrishikesh" --thread-id dev-1
+uv run python -m app.main -m "Salesforce to Meta" --thread-id dev-1
 ```
 
 ## Environment variables
@@ -78,6 +99,7 @@ uv run python -m app.main --message "what did I just say?" --thread-id dev-1
 | `LANGSMITH_PROJECT` | LangSmith project name | `signals-langraph-agent` |
 | `LANGSMITH_ENDPOINT` | LangSmith API endpoint | `https://api.smith.langchain.com` |
 | `LOG_LEVEL` | Logging verbosity | `INFO` |
+| `SIGNALS_DEFAULT_USER_NAME` | Default `user_name` for CLI invokes | — |
 
 See [`.env.example`](.env.example) for the full template.
 

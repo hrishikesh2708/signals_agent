@@ -21,6 +21,8 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
+    signals_default_user_name: str | None = None
+
 
 settings = Settings()
 

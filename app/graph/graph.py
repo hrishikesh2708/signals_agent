@@ -2,15 +2,15 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from app.graph.nodes import chat_node
-from app.graph.state import AgentState
+from app.graph.nodes import scope_guard_node
+from app.graph.state import GraphInput, SignalsState
 
 
 def _build() -> StateGraph:
-    graph = StateGraph(AgentState)
-    graph.add_node("chat", chat_node)
-    graph.add_edge(START, "chat")
-    graph.add_edge("chat", END)
+    graph = StateGraph(SignalsState, input_schema=GraphInput)
+    graph.add_node("scope_guard", scope_guard_node)
+    graph.add_edge(START, "scope_guard")
+    graph.add_edge("scope_guard", END)
     return graph
 
 
