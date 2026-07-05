@@ -1,0 +1,58 @@
+id: zoho
+category: CRM
+display_name: Zoho CRM
+enabled: true
+aliases:
+  - zoho
+  - zoho crm
+  - zohocrm
+  - zcrm
+
+oauth:
+  start_path: /api/auth/source/zoho
+  callback_path: /api/auth/source/zoho/callback
+  pkce: false
+  client_id_env: ZOHO_CLIENT_ID
+  client_secret_env: ZOHO_CLIENT_SECRET
+  redirect_uri_env: ZOHO_REDIRECT_URI
+  scope_env: ZOHO_SCOPES
+  accounts_url_env: ZOHO_ACCOUNTS_URL
+  default_accounts_url: https://accounts.zoho.com
+  authorize_url: "{accounts_url}/oauth/v2/auth"
+  token_url: "{accounts_url}/oauth/v2/token"
+
+objects:
+  discover: false
+  common:
+    - Leads
+    - Contacts
+    - Accounts
+    - Deals
+
+schema:
+  skip_types: []
+  expose:
+    - name
+    - label
+    - type
+    - custom
+    - picklist_values
+  identity_field_patterns:
+    - email
+    - phone
+    - mobile
+  api_version: v2
+
+related_identity:
+  Deals:
+    related_object: Contact
+    surface_fields:
+      - Email
+      - Phone
+      - MobilePhone
+      - FirstName
+      - LastName
+    join:
+      object: Contact
+      via: Contact_Name
+      filter: null

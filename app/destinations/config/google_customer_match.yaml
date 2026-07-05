@@ -1,0 +1,72 @@
+destination_type: google_customer_match
+version: "1.0"
+fields:
+  - name: hashed_email
+    type: string
+    required: false
+    recommended: true
+    description: SHA-256 hash of normalized (lowercased, trimmed) email address.
+    enum_values: []
+    constraints:
+      hash: sha256
+  - name: hashed_phone_number
+    type: string
+    required: false
+    recommended: true
+    description: SHA-256 hash of E.164-formatted phone number.
+    enum_values: []
+    constraints:
+      hash: sha256
+  - name: hashed_first_name
+    type: string
+    required: false
+    description: SHA-256 hash of normalized first name.
+    enum_values: []
+    constraints:
+      hash: sha256
+  - name: hashed_last_name
+    type: string
+    required: false
+    description: SHA-256 hash of normalized last name.
+    enum_values: []
+    constraints:
+      hash: sha256
+  - name: postal_code
+    type: string
+    required: false
+    description: Postal / ZIP code (used with country_code and name fields).
+    enum_values: []
+    constraints: {}
+  - name: country_code
+    type: string
+    required: false
+    description: ISO 3166-1 alpha-2 country code.
+    enum_values: [US, IN, GB, CA, AU, DE, FR, ES, IT, JP]
+    constraints: {}
+  - name: user_list_resource_name
+    type: string
+    required: true
+    description: Target Google Ads user list resource name (e.g. customers/123/userLists/456).
+    enum_values: []
+    constraints: {}
+    source_mode_hint: set_at_sync
+
+catalog:
+  enabled: true
+  label: Google Customer Match
+  short_label: Google (audience)
+  detail: Customer Match audience
+  aliases: [google, google ads, adwords, youtube]
+  product_group: google
+  group_default: false
+  disambiguators: [customer match, audience, remarketing, retargeting]
+  signal_types: [audience]
+  oauth_path: /api/auth/google
+  event_destination: false
+  # NOTE: deliberately no match_keys yet — adding one changes validation strictness;
+  match_keys: []
+  # candidate follow-up after the registry refactor proves behavior-neutral.
+  required_metadata:
+    - key: user_list_resource_name
+      label: Google Customer Match user list
+  per_stage: {}

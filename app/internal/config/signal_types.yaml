@@ -1,0 +1,37 @@
+signal_types:
+  - id: offline_conversion
+    display_name: Offline Conversion
+    aliases:
+      - offline_conversion
+      - offline conversion
+      - offline conversions
+      - offline
+      - crm conversion
+    active: true
+  - id: web_conversion
+    display_name: Web Conversion
+    aliases:
+      - web_conversion
+      - web conversion
+      - web conversions
+      - web
+      - pixel
+    active: false
+  - id: lead_conversion
+    display_name: Lead Conversion
+    aliases:
+      - lead_conversion
+      - lead conversion
+      - lead
+      - leads
+      - form fill
+    active: false
+  - id: audience
+    display_name: Audience
+    aliases:
+      - audience
+      - custom_audience
+      - custom audience
+      - customer match
+      - segment
+    active: true 

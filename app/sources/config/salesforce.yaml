@@ -1,0 +1,68 @@
+id: salesforce
+category: CRM
+display_name: Salesforce
+enabled: true
+aliases:
+  - salesforce
+  - sfdc
+  - sf
+connector: salesforce 
+
+oauth:
+  start_path: /api/auth/salesforce
+  callback_path: /api/auth/salesforce/callback
+  pkce: true
+  client_id_env: SF_CLIENT_ID
+  client_secret_env: SF_CLIENT_SECRET
+  redirect_uri_env: SF_CALLBACK_URL
+  scope_env: SF_OAUTH_SCOPE
+  login_url_env: SF_LOGIN_URL
+  default_login_url: https://login.salesforce.com
+  authorize_url: "{login_url}/services/oauth2/authorize"
+  token_url: "{login_url}/services/oauth2/token"
+
+objects:
+  discover: false
+  common:
+    - Lead
+    - Contact
+    - Account
+    - Opportunity
+
+schema:
+  skip_types:
+    - address
+    - location
+  expose:
+    - name
+    - label
+    - type
+    - custom
+    - picklist_values
+  identity_field_patterns:
+    - email
+    - phone
+    - mobile
+  api_version: v59.0
+
+related_identity:
+  Opportunity:
+    related_object: Contact
+    surface_fields:
+      - Email
+      - Phone
+      - MobilePhone
+      - FirstName
+      - LastName
+    join:
+      object: Contact
+      via: OpportunityContactRole
+      filter: "IsPrimary = true"
+
+automap_synonyms: >
+  A date/time field (CloseDate, CreatedDate, conversion/close date) maps to the
+  conversion-time canonical (event_time); Amount/Value/Deal size -> revenue_amount;
+  Email -> person_email; Phone/Mobile -> person_phone_e164; GCLID/Google Click ID ->
+  gclid; CurrencyIsoCode -> currency_code. Related-object (dotted) fields like
+  'Contact.Email' / 'Contact.Phone' are valid identity sources -> person_email /
+  person_phone_e164.

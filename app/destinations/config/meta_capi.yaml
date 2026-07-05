@@ -1,0 +1,66 @@
+destination_type: meta_capi
+version: "1.0"
+fields:
+  - name: event_name
+    type: string
+    required: true
+    description: Name of the conversion event.
+    enum_values: [Purchase, Lead, CompleteRegistration, AddToCart]
+    constraints: {}
+    source_mode_hint: set_at_sync
+  - name: event_time
+    type: datetime
+    required: true
+    description: Unix timestamp for event occurrence.
+    enum_values: []
+    constraints: {}
+  - name: em
+    type: string
+    required: false
+    recommended: true
+    description: SHA-256 hashed email.
+    enum_values: []
+    constraints:
+      hash: sha256
+  - name: ph
+    type: string
+    required: false
+    recommended: true
+    description: SHA-256 hashed phone number.
+    enum_values: []
+    constraints:
+      hash: sha256
+  - name: value
+    type: number
+    required: false
+    description: Conversion value.
+    enum_values: []
+    constraints: {}
+  - name: currency
+    type: string
+    required: false
+    description: ISO currency code.
+    enum_values: [USD, INR, EUR, GBP]
+    constraints: {}
+
+catalog:
+  enabled: true
+  label: Meta Conversions API
+  short_label: Meta
+  detail: CRM Conversions API
+  aliases: [meta, facebook, instagram, fb]
+  product_group: meta
+  group_default: true
+  disambiguators: []
+  signal_types: [offline_conversion]
+  oauth_path: /api/auth/meta
+  event_destination: true
+  match_keys: [person_email, person_phone_e164]
+  required_metadata:
+    - key: pixelId
+      label: Meta Pixel ID
+    - key: access_token
+      label: Meta access token
+      secret: true
+  per_stage:
+    event_name: {field: event_name, fill: stage_name}

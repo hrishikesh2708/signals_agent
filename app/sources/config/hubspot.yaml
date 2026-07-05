@@ -1,0 +1,53 @@
+id: hubspot
+category: CRM
+display_name: HubSpot
+enabled: true
+aliases:
+  - hubspot
+  - hub spot
+  - hs
+
+oauth:
+  start_path: /api/auth/source/hubspot
+  callback_path: /api/auth/source/hubspot/callback
+  pkce: false
+  client_id_env: HUBSPOT_CLIENT_ID
+  client_secret_env: HUBSPOT_CLIENT_SECRET
+  redirect_uri_env: HUBSPOT_REDIRECT_URI
+  scope_env: HUBSPOT_SCOPES
+  authorize_url: https://app.hubspot.com/oauth/authorize
+  token_url: https://api.hubapi.com/oauth/v1/token
+
+objects:
+  discover: false
+  common:
+    - contacts
+    - companies
+    - deals
+
+schema:
+  skip_types: []
+  expose:
+    - name
+    - label
+    - type
+    - custom
+    - picklist_values
+  identity_field_patterns:
+    - email
+    - phone
+    - mobile
+
+related_identity:
+  deals:
+    related_object: contacts
+    surface_fields:
+      - Email
+      - Phone
+      - MobilePhone
+      - FirstName
+      - LastName
+    join:
+      object: contacts
+      via: associations
+      filter: null

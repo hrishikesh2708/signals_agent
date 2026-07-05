@@ -1,0 +1,93 @@
+destination_type: canonical
+version: "1.0"
+fields:
+  - name: person_email
+    type: string
+    required: false
+    description: Normalized email address for identity resolution.
+    enum_values: []
+    constraints: {}
+  - name: person_phone_e164
+    type: string
+    required: false
+    description: Phone number in E.164 format.
+    enum_values: []
+    constraints: {}
+  - name: person_first_name
+    type: string
+    required: false
+    description: Given name.
+    enum_values: []
+    constraints: {}
+  - name: person_last_name
+    type: string
+    required: false
+    description: Family name.
+    enum_values: []
+    constraints: {}
+  - name: person_city
+    type: string
+    required: false
+    description: City for address enrichment.
+    enum_values: []
+    constraints: {}
+  - name: person_region
+    type: string
+    required: false
+    description: Region or state.
+    enum_values: []
+    constraints: {}
+  - name: person_postal_code
+    type: string
+    required: false
+    description: Postal or ZIP code.
+    enum_values: []
+    constraints: {}
+  - name: person_country
+    type: string
+    required: false
+    description: ISO country name or code.
+    enum_values: []
+    constraints: {}
+  - name: company_name
+    type: string
+    required: false
+    description: Organization or account name.
+    enum_values: []
+    constraints: {}
+  - name: lead_status
+    type: string
+    required: false
+    description: Sales or marketing lifecycle stage.
+    enum_values: []
+    constraints: {}
+  - name: event_name
+    type: string
+    required: false
+    description: Logical conversion or engagement event label.
+    enum_values: []
+    constraints: {}
+  - name: event_time
+    type: datetime
+    required: false
+    description: When the business event occurred.
+    enum_values: []
+    constraints: {}
+  - name: revenue_amount
+    type: number
+    required: false
+    description: Monetary value associated with the event.
+    enum_values: []
+    constraints: {}
+  - name: currency_code
+    type: string
+    required: false
+    description: ISO 4217 currency code.
+    enum_values: []
+    constraints: {}
+  - name: gclid
+    type: string
+    required: false
+    description: Google Click ID captured at lead creation (often a Salesforce custom field), used to attribute offline conversions to the originating ad click.
+    enum_values: []
+    constraints: {}

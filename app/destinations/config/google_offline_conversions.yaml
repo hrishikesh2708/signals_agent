@@ -1,0 +1,67 @@
+destination_type: google_offline_conversions
+version: "1.0"
+fields:
+  - name: conversion_action
+    type: string
+    required: true
+    description: Google Ads conversion action resource name this conversion maps to. References an action defined in your Google Ads account, so it is supplied per destination (not mapped from Salesforce).
+    enum_values: []
+    constraints: {}
+    source_mode_hint: set_at_sync
+  - name: conversion_date_time
+    type: datetime
+    required: true
+    description: When the conversion happened (RFC 3339).
+    enum_values: []
+    constraints: {}
+  - name: gclid
+    type: string
+    required: false
+    recommended: true
+    description: Google Click ID — the strongest offline-conversion match key.
+    enum_values: []
+    constraints: {}
+  - name: hashed_email
+    type: string
+    required: false
+    recommended: true
+    description: SHA-256 hash of normalized email (enhanced-conversion match key).
+    enum_values: []
+    constraints:
+      hash: sha256
+  - name: hashed_phone_number
+    type: string
+    required: false
+    recommended: true
+    description: SHA-256 hash of E.164 phone (enhanced-conversion match key).
+    enum_values: []
+    constraints:
+      hash: sha256
+  - name: conversion_value
+    type: number
+    required: false
+    description: Monetary value of the conversion.
+    enum_values: []
+    constraints: {}
+  - name: currency_code
+    type: string
+    required: false
+    description: ISO 4217 currency code.
+    enum_values: [USD, INR, EUR, GBP]
+    constraints: {}
+
+catalog:
+  enabled: true
+  label: Google Offline Conversions
+  short_label: Google (offline)
+  detail: Offline Conversions
+  aliases: [google, google ads, adwords, youtube]
+  product_group: google
+  group_default: true
+  oauth_path: /api/auth/google?dest=google_offline_conversions
+  event_destination: true
+  match_keys: [gclid, person_email, person_phone_e164]
+  # No destination-level default conversion action — it's set per conversion stage
+  # (per_stage.event_name below), so the settings step never prompts for one.
+  per_stage:
+    event_name: {field: conversion_action, fill: user}
