@@ -67,7 +67,40 @@ Paste this into the Studio **Input** panel (adjust as needed):
 
 See [`studio_input.example.json`](studio_input.example.json) for a copy-paste template.
 
-After the run, open the run’s **State → Output** (or `__end__` in the trace) to see the full merged state: `messages`, `user_name`, and `scope`.
+After the run, open the run’s **State → Output** (or `__end__` in the trace) to see the full merged state: `messages`, `user_name`, `scope`, and `intent`.
+
+### Intent clarify resume (partial intent)
+
+When `intent_clarify` interrupts, resume with **one** of these shapes:
+
+```json
+{"signal_type": "offline_conversion"}
+```
+
+LangGraph Studio often echoes the interrupt payload back — that also works when `field.selected` or `field.suggested` is set:
+
+```json
+{
+  "open_question": "signal_type",
+  "field": {"selected": "offline_conversion", "suggested": "offline_conversion"}
+}
+```
+
+Or a bare string (same thread resume):
+
+```json
+"offline_conversion"
+```
+
+Or for source / channels:
+
+```json
+{"source": "salesforce"}
+```
+
+```json
+{"channels": ["meta_capi", "google_offline_conversions"]}
+```
 
 ## CLI (multi-turn testing)
 
@@ -108,18 +141,33 @@ See [`.env.example`](.env.example) for the full template.
 ```
 signals_langraph_agent/
 ├── app/
-│   ├── graph/
-│   │   ├── state.py       # AgentState (MessagesState)
-│   │   ├── nodes.py       # Graph nodes
-│   │   └── graph.py       # build_studio_graph + build_graph
-│   ├── config.py          # Settings via pydantic-settings
-│   └── main.py            # CLI entrypoint
+│   ├── sources/               # CRM source of truth (YAML + connectors per provider)
+│   │   ├── config/            # *.yaml — CRM connector definitions
+│   │   └── connectors/        # OAuth + describe_object per provider
+│   ├── destinations/          # Ad destination source of truth (YAML + connectors)
+│   │   ├── config/            # *.yaml — ad platform connector definitions
+│   │   └── connectors/        # OAuth stubs per platform
+│   ├── internal/              # Shared schema config (signal types, canonical fields)
+│   │   └── config/            # signal_types.yaml, canonical.yaml
+│   ├── graph/                 # LangGraph orchestration + all processing on SSOT data
+│   │   ├── state.py           # SignalsState, intent/scope TypedDicts
+│   │   ├── prompts.py         # LLM prompts
+│   │   ├── handlers.py        # LLM calls + prompt catalog lines
+│   │   ├── validators.py      # scope/intent/clarify validation and resolution
+│   │   ├── validators_helpers.py  # lookup index + mention parsing (validators only)
+│   │   ├── routers.py
+│   │   ├── nodes.py
+│   │   ├── llm.py
+│   │   └── graph.py
+│   ├── config.py
+│   └── main.py
 ├── tests/
-├── langgraph.json         # Studio config
+├── langgraph.json
 ├── pyproject.toml
-├── .env.example
 └── README.md
 ```
+
+**Rule:** `app/sources/`, `app/destinations/`, and `app/internal/` are source-of-truth packages — config load, id lookup, auth paths, and live API connectors only. All processing on top of that data (scope validation, intent resolution, mention parsing, HITL clarify payloads) lives in `app/graph/`.
 
 ## Development
 
