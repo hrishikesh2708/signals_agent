@@ -16,9 +16,9 @@ class SignalTypesConfig(BaseModel):
 
 class CanonicalField(BaseModel):
     name: str = Field(..., description="The name of the canonical field")
-    type: str = Field(...,default="string", description="The type of the canonical field") # Defaults to string if missing
-    required: bool = Field(..., default=False, description="Whether the canonical field is required")
-    description: str = Field(...,default="", description="The description of the canonical field")
+    type: str = Field(default="string", description="The type of the canonical field")
+    required: bool = Field(default=False, description="Whether the canonical field is required")
+    description: str = Field(default="", description="The description of the canonical field")
     enum_values: Tuple[str, ...] = Field(default_factory=tuple, description="The enum values of the canonical field")
     constraints: Dict[str, Any] = Field(default_factory=dict, description="The constraints of the canonical field")
 
