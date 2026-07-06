@@ -10,3 +10,4 @@ __pycache__/
 dist/
 build/
 .langgraph_api/
+app/sources/*.json
