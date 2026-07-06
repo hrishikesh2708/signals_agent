@@ -1,5 +1,26 @@
-destination_type: google_offline_conversions
+id: google_offline_conversions
 version: "1.0"
+enabled: true
+display_name: Google Offline Conversions
+short_label: Google (offline)
+detail: Offline Conversions
+aliases: [google, google ads, adwords, youtube]
+connector: google_offline_conversions
+
+oauth:
+  start_path: /api/auth/google?dest=google_offline_conversions
+
+product_group: google
+group_default: true
+disambiguators: [offline conversion, offline conversions, gclid, conversion action]
+signal_types: [offline_conversion]
+event_destination: true
+match_keys: [gclid, person_email, person_phone_e164]
+# conversion_action is per-stage (per_stage.event_name below), not destination-level metadata
+required_metadata: []
+per_stage:
+  event_name: {field: conversion_action, fill: user}
+
 fields:
   - name: conversion_action
     type: string
@@ -49,19 +70,3 @@ fields:
     description: ISO 4217 currency code.
     enum_values: [USD, INR, EUR, GBP]
     constraints: {}
-
-catalog:
-  enabled: true
-  label: Google Offline Conversions
-  short_label: Google (offline)
-  detail: Offline Conversions
-  aliases: [google, google ads, adwords, youtube]
-  product_group: google
-  group_default: true
-  oauth_path: /api/auth/google?dest=google_offline_conversions
-  event_destination: true
-  match_keys: [gclid, person_email, person_phone_e164]
-  # No destination-level default conversion action — it's set per conversion stage
-  # (per_stage.event_name below), so the settings step never prompts for one.
-  per_stage:
-    event_name: {field: conversion_action, fill: user}

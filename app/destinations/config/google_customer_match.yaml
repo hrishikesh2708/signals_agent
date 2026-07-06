@@ -1,5 +1,28 @@
-destination_type: google_customer_match
+id: google_customer_match
 version: "1.0"
+enabled: true
+display_name: Google Customer Match
+short_label: Google (audience)
+detail: Customer Match audience
+aliases: [google, google ads, adwords, youtube]
+connector: google_customer_match
+
+oauth:
+  start_path: /api/auth/google
+
+product_group: google
+group_default: false
+disambiguators: [customer match, audience, remarketing, retargeting]
+signal_types: [audience]
+event_destination: false
+# NOTE: deliberately no match_keys yet — adding one changes validation strictness;
+match_keys: []
+# candidate follow-up after the registry refactor proves behavior-neutral.
+required_metadata:
+  - key: user_list_resource_name
+    label: Google Customer Match user list
+per_stage: {}
+
 fields:
   - name: hashed_email
     type: string
@@ -50,23 +73,3 @@ fields:
     enum_values: []
     constraints: {}
     source_mode_hint: set_at_sync
-
-catalog:
-  enabled: true
-  label: Google Customer Match
-  short_label: Google (audience)
-  detail: Customer Match audience
-  aliases: [google, google ads, adwords, youtube]
-  product_group: google
-  group_default: false
-  disambiguators: [customer match, audience, remarketing, retargeting]
-  signal_types: [audience]
-  oauth_path: /api/auth/google
-  event_destination: false
-  # NOTE: deliberately no match_keys yet — adding one changes validation strictness;
-  match_keys: []
-  # candidate follow-up after the registry refactor proves behavior-neutral.
-  required_metadata:
-    - key: user_list_resource_name
-      label: Google Customer Match user list
-  per_stage: {}
