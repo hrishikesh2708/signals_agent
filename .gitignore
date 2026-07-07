@@ -16,3 +16,4 @@ server/app/sources/*.json
 # Node / Next.js (client)
 client/node_modules/
 client/.next/
+client/*.tsbuildinfo
