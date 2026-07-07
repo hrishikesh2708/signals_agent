@@ -3,6 +3,7 @@
 import { AgentMessageBubble } from "./messages/agent-message-bubble";
 import { ChatErrorBoundary } from "./chat-error-boundary";
 import { HitlApprovalCard } from "./interrupts/hitl-approval-card";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { CopilotChatLayout } from "./copilot-chat-layout";
 import { useHeadlessInterrupt } from "@/hooks/use-headless-interrupt";
@@ -28,9 +29,13 @@ const INTERRUPT_STEPS: Record<string, { step: number; total: number; label: stri
 export function HeadlessChat({
   projectName,
   sessionId,
+  onNewChat,
+  newChatLoading = false,
 }: {
   projectName?: string;
   sessionId: string;
+  onNewChat?: () => void;
+  newChatLoading?: boolean;
 }) {
   const { copilotkit } = useCopilotKit();
   const { agent } = useAgent({ agentId: CHAT_AGENT_ID });
@@ -240,6 +245,26 @@ export function HeadlessChat({
   return (
     <CopilotChatLayout
       projectName={projectName}
+      headerActions={
+        onNewChat ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onNewChat}
+            disabled={newChatLoading || !!pending || agent.isRunning}
+          >
+            {newChatLoading ? (
+              <span className="flex items-center gap-2">
+                <Spinner size="sm" />
+                New chat
+              </span>
+            ) : (
+              "New chat"
+            )}
+          </Button>
+        ) : null
+      }
       draft={draft}
       onDraftChange={setDraft}
       onSubmit={handleSubmit}

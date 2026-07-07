@@ -12,6 +12,7 @@ export function CopilotChatLayout({
   inputDisabled = false,
   inputPlaceholder = "Message Signals Copilot…",
   projectName,
+  headerActions,
   banner,
   footerExtra,
   stepInfo,
@@ -23,6 +24,7 @@ export function CopilotChatLayout({
   inputDisabled?: boolean;
   inputPlaceholder?: string;
   projectName?: string;
+  headerActions?: React.ReactNode;
   banner?: React.ReactNode;
   footerExtra?: React.ReactNode;
   stepInfo?: { step: number; total: number; label: string } | null;
@@ -48,15 +50,20 @@ export function CopilotChatLayout({
               </p>
             </div>
           </div>
-          {projectName ? (
-            <div className="ml-auto shrink-0 text-right">
-              <p className="text-xs text-[var(--muted-foreground)]">Project</p>
-              <p
-                className="max-w-[12rem] truncate text-sm font-medium text-[var(--foreground)] sm:max-w-[16rem]"
-                title={projectName}
-              >
-                {projectName}
-              </p>
+          {(headerActions || projectName) ? (
+            <div className="ml-auto flex shrink-0 items-center gap-4">
+              {headerActions}
+              {projectName ? (
+                <div className="text-right">
+                  <p className="text-xs text-[var(--muted-foreground)]">Project</p>
+                  <p
+                    className="max-w-[12rem] truncate text-sm font-medium text-[var(--foreground)] sm:max-w-[16rem]"
+                    title={projectName}
+                  >
+                    {projectName}
+                  </p>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { ApiError } from "@/lib/api";
 import { loadStoredProject } from "@/lib/project-storage";
 import {
+  clearSession,
   createServerSession,
   type StoredChatSession,
 } from "@/lib/session-storage";
@@ -30,6 +31,7 @@ export function ChatShell() {
   const [activeProject, setActiveProject] = useState<ProjectResponse | null>(null);
   const [session, setSession] = useState<StoredChatSession | null>(null);
   const [sessionLoading, setSessionLoading] = useState(false);
+  const [newChatLoading, setNewChatLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,6 +44,24 @@ export function ChatShell() {
     setSession(null);
     setActiveProject(project);
   }, []);
+
+  const handleNewChat = useCallback(async () => {
+    if (!activeProject || newChatLoading) return;
+
+    setNewChatLoading(true);
+    setError(null);
+
+    try {
+      clearSession();
+      const next = await createServerSession(activeProject.id, { forceNew: true });
+      setSession(next);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) return;
+      setError(err instanceof Error ? err.message : "session_create_failed");
+    } finally {
+      setNewChatLoading(false);
+    }
+  }, [activeProject, newChatLoading]);
 
   useEffect(() => {
     if (authLoading || !projectHydrated || !activeProject) return;
@@ -132,10 +152,12 @@ export function ChatShell() {
 
   return (
     <ProjectProvider project={activeProject}>
-      <ChatProviders threadId={session.session_id}>
+      <ChatProviders key={session.session_id} threadId={session.session_id}>
         <HeadlessChat
           projectName={activeProject.name}
           sessionId={session.session_id}
+          onNewChat={handleNewChat}
+          newChatLoading={newChatLoading}
         />
       </ChatProviders>
     </ProjectProvider>
