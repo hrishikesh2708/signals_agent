@@ -1,6 +1,7 @@
 import logging
 import os
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,6 +23,20 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     signals_default_user_name: str | None = None
+
+    database_url: str = "postgresql+psycopg://signals:signals@localhost:5432/signals"
+    jwt_secret: str = "change-me-in-production"
+    cors_origins: list[str] = ["http://localhost:3000"]
+    api_base_url: str = "http://localhost:8000"
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: str | list[str]) -> list[str]:
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
 
 
 settings = Settings()

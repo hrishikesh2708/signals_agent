@@ -113,17 +113,17 @@ Invoke the graph from the command line with in-memory checkpointing:
 cd server
 
 # Single message with user name
-uv run python -m app.main -m "hello" -u "Hrishikesh"
+uv run python -m app.cli -m "hello" -u "Hrishikesh"
 
 # Or set a default in .env: SIGNALS_DEFAULT_USER_NAME=Hrishikesh
-uv run python -m app.main -m "hello"
+uv run python -m app.cli -m "hello"
 
 # Print full merged state (not just the last reply)
-uv run python -m app.main -m "hello" -u "Hrishikesh" --dump-state
+uv run python -m app.cli -m "hello" -u "Hrishikesh" --dump-state
 
 # Multi-turn — reuse the same thread ID across invocations
-uv run python -m app.main -m "hello" -u "Hrishikesh" --thread-id dev-1
-uv run python -m app.main -m "Salesforce to Meta" --thread-id dev-1
+uv run python -m app.cli -m "hello" -u "Hrishikesh" --thread-id dev-1
+uv run python -m app.cli -m "Salesforce to Meta" --thread-id dev-1
 ```
 
 ## Environment variables
@@ -169,7 +169,11 @@ signals/
         ├── internal/              # Shared schema config
         ├── graph/                 # LangGraph orchestration
         ├── config.py
-        └── main.py
+        ├── cli.py                 # LangGraph CLI (local invoke)
+        ├── main.py                # FastAPI app
+        ├── database.py
+        └── routers/
+            └── health.py
 ```
 
 **Rule:** `server/app/sources/`, `server/app/destinations/`, and `server/app/internal/` are source-of-truth packages — config load, id lookup, auth paths, and live API connectors only. All processing on top of that data (scope validation, intent resolution, mention parsing, HITL clarify payloads) lives in `server/app/graph/`.
