@@ -1,7 +1,9 @@
+import { ShellLayout } from "@/components/shell/shell-layout";
+
 export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="h-full min-h-screen">{children}</div>;
+  return <ShellLayout>{children}</ShellLayout>;
 }
