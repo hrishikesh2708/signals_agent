@@ -31,7 +31,10 @@ export function humanizeFieldError(field: string, message: string): string {
   if (field === "email" && normalized.includes("@-sign")) {
     return "Enter a valid email address (e.g. you@example.com)";
   }
-  if (field === "username" && normalized.includes("50")) {
+  if (
+    (field === "username" || field === "name") &&
+    normalized.includes("50")
+  ) {
     return "Display name must be 50 characters or fewer";
   }
 
