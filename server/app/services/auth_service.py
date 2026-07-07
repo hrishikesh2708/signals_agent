@@ -25,6 +25,18 @@ def create_access_token(subject: str) -> str:
 
 
 def decode_access_token(token: str) -> str:
+    return _decode_token_subject(token)
+
+
+def create_session_token(session_id: str) -> str:
+    return create_access_token(session_id)
+
+
+def decode_session_token(token: str) -> str:
+    return _decode_token_subject(token)
+
+
+def _decode_token_subject(token: str) -> str:
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
     except InvalidTokenError as exc:
