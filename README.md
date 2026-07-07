@@ -1,6 +1,8 @@
-# Signals LangGraph Agent
+# Signals
 
 LangGraph-based AI agent for [Signals](https://datahash.com) — orchestrating setup, configuration, and data workflows with deterministic control flow and LLM-assisted steps.
+
+Monorepo layout: **`server/`** (Python / LangGraph) and **`client/`** (Next.js + CopilotKit scaffold).
 
 ## Overview
 
@@ -26,21 +28,22 @@ This repository hosts a focused LangGraph agent for Signals. It is intended to c
 ## Getting started
 
 ```bash
-cd signals_langraph_agent
+cd signals   # or your local clone path
 
-# Install dependencies (including dev tools)
-uv sync --dev
+# Install server dependencies (including dev tools)
+cd server && uv sync --dev
 
-# Configure environment
-cp .env.example .env
+# Configure environment (single root .env for all services)
+cd .. && cp .env.example .env
 # Set OPENAI_API_KEY and LANGSMITH_API_KEY in .env
 ```
 
 ## LangGraph Studio (primary dev loop)
 
-Start the local dev server:
+Start the local dev server from `server/`:
 
 ```bash
+cd server
 uv run langgraph dev --port 2024
 ```
 
@@ -50,7 +53,7 @@ Open the Studio URL printed in the terminal, e.g.:
 https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
 ```
 
-Studio loads the `signals_agent` graph defined in [`langgraph.json`](langgraph.json). Edit nodes in `app/graph/`, save, and re-invoke in Studio — the dev server hot-reloads.
+Studio loads the `signals_agent` graph defined in [`server/langgraph.json`](server/langgraph.json). Edit nodes in `server/app/graph/`, save, and re-invoke in Studio — the dev server hot-reloads.
 
 **No Docker or Postgres required for Studio.** Checkpointing is in-memory during local development.
 
@@ -65,7 +68,7 @@ Paste this into the Studio **Input** panel (adjust as needed):
 }
 ```
 
-See [`studio_input.example.json`](studio_input.example.json) for a copy-paste template.
+See [`server/studio_input.example.json`](server/studio_input.example.json) for a copy-paste template.
 
 After the run, open the run’s **State → Output** (or `__end__` in the trace) to see the full merged state: `messages`, `user_name`, `scope`, and `intent`.
 
@@ -107,6 +110,8 @@ Or for source / channels:
 Invoke the graph from the command line with in-memory checkpointing:
 
 ```bash
+cd server
+
 # Single message with user name
 uv run python -m app.main -m "hello" -u "Hrishikesh"
 
@@ -134,44 +139,46 @@ uv run python -m app.main -m "Salesforce to Meta" --thread-id dev-1
 | `LOG_LEVEL` | Logging verbosity | `INFO` |
 | `SIGNALS_DEFAULT_USER_NAME` | Default `user_name` for CLI invokes | — |
 
-See [`.env.example`](.env.example) for the full template.
+See [`.env.example`](.env.example) for the full template (includes commented placeholders for future Postgres, FastAPI, and client vars).
 
 ## Project structure
 
 ```
-signals_langraph_agent/
-├── app/
-│   ├── sources/               # CRM source of truth (YAML + connectors per provider)
-│   │   ├── config/            # *.yaml — CRM connector definitions
-│   │   └── connectors/        # OAuth + describe_object per provider
-│   ├── destinations/          # Ad destination source of truth (YAML + connectors)
-│   │   ├── config/            # *.yaml — ad platform connector definitions
-│   │   └── connectors/        # OAuth stubs per platform
-│   ├── internal/              # Shared schema config (signal types, canonical fields)
-│   │   └── config/            # signal_types.yaml, canonical.yaml
-│   ├── graph/                 # LangGraph orchestration + all processing on SSOT data
-│   │   ├── state.py           # SignalsState, intent/scope TypedDicts
-│   │   ├── prompts.py         # LLM prompts
-│   │   ├── handlers.py        # LLM calls + prompt catalog lines
-│   │   ├── validators.py      # scope/intent/clarify validation and resolution
-│   │   ├── validators_helpers.py  # lookup index + mention parsing (validators only)
-│   │   ├── routers.py
-│   │   ├── nodes.py
-│   │   ├── llm.py
-│   │   └── graph.py
-│   ├── config.py
-│   └── main.py
-├── tests/
-├── langgraph.json
-├── pyproject.toml
-└── README.md
+signals/
+├── .env                    # gitignored — single env file for all services
+├── .env.example
+├── .gitignore
+├── README.md
+├── docker-compose.yml      # skeleton: postgres + server + client
+│
+├── client/                 # Next.js + CopilotKit (scaffold only)
+│   ├── Dockerfile
+│   ├── package.json
+│   └── src/app/
+│
+└── server/                 # FastAPI + LangGraph + PostgreSQL (Python tooling)
+    ├── Dockerfile
+    ├── pyproject.toml
+    ├── uv.lock
+    ├── langgraph.json
+    ├── studio_input.example.json
+    ├── tests/
+    └── app/
+        ├── sources/               # CRM source of truth (YAML + connectors)
+        ├── destinations/          # Ad destination source of truth
+        ├── internal/              # Shared schema config
+        ├── graph/                 # LangGraph orchestration
+        ├── config.py
+        └── main.py
 ```
 
-**Rule:** `app/sources/`, `app/destinations/`, and `app/internal/` are source-of-truth packages — config load, id lookup, auth paths, and live API connectors only. All processing on top of that data (scope validation, intent resolution, mention parsing, HITL clarify payloads) lives in `app/graph/`.
+**Rule:** `server/app/sources/`, `server/app/destinations/`, and `server/app/internal/` are source-of-truth packages — config load, id lookup, auth paths, and live API connectors only. All processing on top of that data (scope validation, intent resolution, mention parsing, HITL clarify payloads) lives in `server/app/graph/`.
 
 ## Development
 
 ```bash
+cd server
+
 # Install with dev dependencies
 uv sync --dev
 
@@ -183,13 +190,17 @@ uv run ruff check .
 uv run ruff format .
 ```
 
+## Docker (skeleton)
+
+`docker-compose.yml` defines `postgres`, `server`, and `client` services. Images are stubs until FastAPI and Next.js are implemented — do not expect `docker compose up` to succeed yet.
+
 ## Adding Postgres checkpointing later
 
 Postgres is deferred until FastAPI integration. When ready:
 
-1. Add `langgraph-checkpoint-postgres` and `psycopg[binary]` to dependencies
-2. Add `docker-compose.yml` with a Postgres 16 service
-3. Add `app/graph/checkpoint.py` with `AsyncPostgresSaver`
+1. Add `langgraph-checkpoint-postgres` and `psycopg[binary]` to server dependencies
+2. Use the `postgres` service in `docker-compose.yml`
+3. Add `server/app/graph/checkpoint.py` with `AsyncPostgresSaver`
 4. Wire `build_graph(checkpointer=postgres_saver)` in a FastAPI `lifespan` hook
 
 The graph nodes, state schema, and topology stay the same — only the checkpointer changes.

@@ -1,4 +1,5 @@
 .venv/
+server/.venv/
 .env
 __pycache__/
 *.py[cod]
@@ -10,4 +11,8 @@ __pycache__/
 dist/
 build/
 .langgraph_api/
-app/sources/*.json
+server/app/sources/*.json
+
+# Node / Next.js (client)
+client/node_modules/
+client/.next/

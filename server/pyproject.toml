@@ -2,7 +2,7 @@
 name = "signals-langraph-agent"
 version = "0.1.0"
 description = "LangGraph agent for Signals — local dev with LangSmith Studio"
-readme = "README.md"
+readme = "../README.md"
 requires-python = ">=3.11"
 dependencies = [
     "langgraph>=0.4.0",
