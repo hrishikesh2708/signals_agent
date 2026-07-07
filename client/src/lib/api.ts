@@ -203,7 +203,7 @@ export const api = {
     }),
 
   register: (body: RegisterRequest) =>
-    bffRequest<TokenResponse>("/api/auth/register", {
+    bffRequest<AuthSuccessResponse>("/api/auth/register", {
       method: "POST",
       body,
       redirectOnUnauthorized: false,

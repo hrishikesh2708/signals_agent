@@ -30,11 +30,13 @@ export function HeadlessChat({
   projectName,
   sessionId,
   onNewChat,
+  onSwitchProject,
   newChatLoading = false,
 }: {
   projectName?: string;
   sessionId: string;
   onNewChat?: () => void;
+  onSwitchProject?: () => void;
   newChatLoading?: boolean;
 }) {
   const { copilotkit } = useCopilotKit();
@@ -246,23 +248,38 @@ export function HeadlessChat({
     <CopilotChatLayout
       projectName={projectName}
       headerActions={
-        onNewChat ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onNewChat}
-            disabled={newChatLoading || !!pending || agent.isRunning}
-          >
-            {newChatLoading ? (
-              <span className="flex items-center gap-2">
-                <Spinner size="sm" />
-                New chat
-              </span>
-            ) : (
-              "New chat"
-            )}
-          </Button>
+        onNewChat || onSwitchProject ? (
+          <div className="flex items-center gap-2">
+            {onSwitchProject ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onSwitchProject}
+                disabled={newChatLoading || !!pending || agent.isRunning}
+              >
+                Switch project
+              </Button>
+            ) : null}
+            {onNewChat ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onNewChat}
+                disabled={newChatLoading || !!pending || agent.isRunning}
+              >
+                {newChatLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Spinner size="sm" />
+                    New chat
+                  </span>
+                ) : (
+                  "New chat"
+                )}
+              </Button>
+            ) : null}
+          </div>
         ) : null
       }
       draft={draft}

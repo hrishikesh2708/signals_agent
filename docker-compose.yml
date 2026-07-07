@@ -24,6 +24,16 @@ services:
       DATABASE_URL: postgresql+psycopg://signals:signals@postgres:5432/signals
     ports:
       - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8000/health'')"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -31,10 +41,13 @@ services:
   client:
     build: ./client
     env_file: .env
+    environment:
+      BACKEND_URL: http://server:8000
     ports:
       - "3000:3000"
     depends_on:
-      - server
+      server:
+        condition: service_healthy
 
 volumes:
   postgres_data:

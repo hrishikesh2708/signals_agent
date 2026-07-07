@@ -13,7 +13,7 @@ import { ProjectSelector } from "@/components/project/project-selector";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/contexts/auth-context";
 import { ApiError } from "@/lib/api";
-import { loadStoredProject } from "@/lib/project-storage";
+import { clearProject, loadStoredProject } from "@/lib/project-storage";
 import {
   clearSession,
   createServerSession,
@@ -41,8 +41,17 @@ export function ChatShell() {
 
   const handleProjectSelect = useCallback((project: ProjectResponse) => {
     setError(null);
+    clearSession();
     setSession(null);
     setActiveProject(project);
+  }, []);
+
+  const handleSwitchProject = useCallback(() => {
+    setError(null);
+    clearSession();
+    clearProject();
+    setSession(null);
+    setActiveProject(null);
   }, []);
 
   const handleNewChat = useCallback(async () => {
@@ -152,11 +161,16 @@ export function ChatShell() {
 
   return (
     <ProjectProvider project={activeProject}>
-      <ChatProviders key={session.session_id} threadId={session.session_id}>
+      <ChatProviders
+        key={session.session_id}
+        threadId={session.session_id}
+        sessionToken={session.access_token}
+      >
         <HeadlessChat
           projectName={activeProject.name}
           sessionId={session.session_id}
           onNewChat={handleNewChat}
+          onSwitchProject={handleSwitchProject}
           newChatLoading={newChatLoading}
         />
       </ChatProviders>

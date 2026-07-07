@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -43,7 +43,7 @@ function clearFieldError(
 
 export function RegisterForm() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { refresh, user, loading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -51,6 +51,12 @@ export function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace("/chat");
+    }
+  }, [loading, user, router]);
 
   function syncRegisterValidity(form: HTMLFormElement) {
     form.querySelectorAll<HTMLInputElement>("input[data-field]").forEach((input) => {
@@ -102,7 +108,7 @@ export function RegisterForm() {
         password,
         name: name.trim() || undefined,
       });
-      await login(email.trim(), password);
+      await refresh();
       router.push("/chat");
     } catch (err) {
       if (err instanceof ApiError) {

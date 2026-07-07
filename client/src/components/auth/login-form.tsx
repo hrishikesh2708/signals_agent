@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -22,12 +22,19 @@ import { parseApiErrorBody } from "@/lib/api-errors";
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const { login } = useAuth();
+  const { login, user, loading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user) {
+      const next = params.get("next");
+      router.replace(next && next.startsWith("/") ? next : "/chat");
+    }
+  }, [loading, user, params, router]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

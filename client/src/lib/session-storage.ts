@@ -6,6 +6,7 @@ export interface StoredChatSession {
   session_id: string;
   access_token: string;
   expires_at: number;
+  project_id: string;
 }
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
@@ -65,7 +66,9 @@ export async function createServerSession(
 ): Promise<StoredChatSession> {
   if (!options?.forceNew) {
     const existing = loadStoredSession();
-    if (existing?.access_token) return existing;
+    if (existing?.access_token && existing.project_id === projectId) {
+      return existing;
+    }
   }
 
   const created = await api.createSession({ project_id: projectId });
@@ -73,6 +76,7 @@ export async function createServerSession(
     session_id: created.session_id,
     access_token: created.token,
     expires_at: jwtExpiresAt(created.token),
+    project_id: projectId,
   };
   storeSession(session);
   return session;

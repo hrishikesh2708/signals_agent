@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { parseApiErrorBody } from "@/lib/api-errors";
+import { JWT_COOKIE, jwtCookieOptions } from "@/lib/auth";
 import { backendFetch } from "@/lib/bff";
+import type { TokenResponse } from "@/lib/types";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -36,5 +38,19 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(parsed, { status: res.status });
+  const token = parsed as TokenResponse;
+  if (!token?.access_token) {
+    return NextResponse.json(
+      { detail: "invalid_backend_response" },
+      { status: 502 },
+    );
+  }
+
+  const response = NextResponse.json({ success: true }, { status: res.status });
+  response.cookies.set(
+    JWT_COOKIE,
+    token.access_token,
+    jwtCookieOptions(token.access_token),
+  );
+  return response;
 }
