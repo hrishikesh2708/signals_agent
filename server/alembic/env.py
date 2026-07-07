@@ -9,6 +9,7 @@ from alembic import context
 from app.config import settings
 from app.models import Base
 from app.models import agent_session as agent_session_model  # noqa: F401
+from app.models import connections as connections_model  # noqa: F401
 from app.models import project as project_model  # noqa: F401
 from app.models import user as user_model  # noqa: F401
 
