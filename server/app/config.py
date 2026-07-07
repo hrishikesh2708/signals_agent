@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://signals:signals@localhost:5432/signals"
     jwt_secret: str = "change-me-in-production"
+    jwt_access_token_expire_minutes: int = 60 * 24 * 7
     cors_origins: list[str] = ["http://localhost:3000"]
     api_base_url: str = "http://localhost:8000"
     api_host: str = "0.0.0.0"
