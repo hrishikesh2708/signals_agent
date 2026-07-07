@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from app.config import settings
 from app.models import Base
+from app.models import project as project_model  # noqa: F401
 from app.models import user as user_model  # noqa: F401
 
 config = context.config
