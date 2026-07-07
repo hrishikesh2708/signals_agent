@@ -1,3 +1,5 @@
+import { api } from "./api";
+
 const CHAT_SESSION_KEY = "dh_chat_session";
 
 export interface StoredChatSession {
@@ -53,14 +55,24 @@ export function loadStoredSessionId(): string | null {
   return session?.session_id ?? null;
 }
 
-export function createLocalSession(): StoredChatSession {
-  const existing = loadStoredSession();
-  if (existing) return existing;
+/**
+ * Reuse a valid stored session or create one via POST /api/auth/session.
+ * Pass `forceNew: true` to always mint a fresh server session (e.g. "New chat").
+ */
+export async function createServerSession(
+  projectId: string,
+  options?: { forceNew?: boolean },
+): Promise<StoredChatSession> {
+  if (!options?.forceNew) {
+    const existing = loadStoredSession();
+    if (existing?.access_token) return existing;
+  }
 
+  const created = await api.createSession({ project_id: projectId });
   const session: StoredChatSession = {
-    session_id: crypto.randomUUID(),
-    access_token: "",
-    expires_at: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
+    session_id: created.session_id,
+    access_token: created.token,
+    expires_at: jwtExpiresAt(created.token),
   };
   storeSession(session);
   return session;

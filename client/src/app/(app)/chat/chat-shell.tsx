@@ -12,12 +12,10 @@ import { ProjectProvider } from "@/components/project/project-context";
 import { ProjectSelector } from "@/components/project/project-selector";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/contexts/auth-context";
-import { api, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { loadStoredProject } from "@/lib/project-storage";
 import {
-  jwtExpiresAt,
-  loadStoredSession,
-  storeSession,
+  createServerSession,
   type StoredChatSession,
 } from "@/lib/session-storage";
 import type { ProjectResponse } from "@/lib/types";
@@ -56,22 +54,7 @@ export function ChatShell() {
       setError(null);
 
       try {
-        const existing = loadStoredSession();
-        if (existing?.access_token) {
-          if (!cancelled) {
-            setSession(existing);
-            setSessionLoading(false);
-          }
-          return;
-        }
-
-        const created = await api.createSession({ project_id: project.id });
-        const next: StoredChatSession = {
-          session_id: created.session_id,
-          access_token: created.token,
-          expires_at: jwtExpiresAt(created.token),
-        };
-        storeSession(next);
+        const next = await createServerSession(project.id);
         if (!cancelled) {
           setSession(next);
           setSessionLoading(false);
