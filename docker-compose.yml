@@ -1,4 +1,3 @@
-# Skeleton only — services may not build until FastAPI / Next.js are implemented.
 services:
   postgres:
     image: postgres:16-alpine
@@ -10,14 +9,24 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U signals -d signals"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   server:
-    build: ./server
+    build:
+      context: .
+      dockerfile: server/Dockerfile
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://signals:signals@postgres:5432/signals
     ports:
       - "8000:8000"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   client:
     build: ./client
