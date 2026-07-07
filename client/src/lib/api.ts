@@ -215,7 +215,8 @@ export const api = {
       redirectOnUnauthorized: false,
     }),
 
-  me: () => bffRequest<AuthMeResponse>("/api/auth/me"),
+  me: (options?: Pick<RequestOptions, "redirectOnUnauthorized">) =>
+    bffRequest<AuthMeResponse>("/api/auth/me", options),
 
   // --- Projects (BFF; user JWT forwarded from cookie) ---
 
