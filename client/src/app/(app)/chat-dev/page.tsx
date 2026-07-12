@@ -51,6 +51,7 @@
 
 import { AgentEventLine } from "@/components/chat/messages/agent-event-line";
 import { AgentMessageBubble } from "@/components/chat/messages/agent-message-bubble";
+import { AgentTextBubble } from "@/components/chat/messages/agent-text-bubble";
 import { ErrorCard } from "@/components/chat/messages/error-card";
 import { MappingResultCard } from "@/components/chat/messages/mapping-result-card";
 import { PipelineActivatedCard } from "@/components/chat/messages/pipeline-activated-card";
@@ -280,9 +281,9 @@ const SECTIONS: Section[] = [
     label: "Plain text — agent bubble",
     tag: "agent_text",
     node: (
-      <div className="max-w-[85%] rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 text-sm text-[var(--foreground)] shadow-sm">
+      <AgentTextBubble>
         <p className="whitespace-pre-wrap">{MOCK_AGENT_TEXT}</p>
-      </div>
+      </AgentTextBubble>
     ),
   },
   {

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { DatahashLogoMark } from "@/components/ui/datahash-logo-mark";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -38,9 +39,7 @@ export function CopilotChatLayout({
       <header className="shrink-0 border-b border-[var(--border)]">
         <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-6 py-4">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-semibold text-[var(--accent-foreground)]">
-              ●
-            </span>
+            <DatahashLogoMark size="md" />
             <div className="min-w-0">
               <h1 className="truncate text-lg font-semibold text-[var(--foreground)]">
                 Signals Setup Copilot

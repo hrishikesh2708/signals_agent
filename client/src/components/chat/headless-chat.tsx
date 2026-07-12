@@ -1,6 +1,7 @@
 "use client";
 
 import { AgentMessageBubble } from "./messages/agent-message-bubble";
+import { AgentTextBubble } from "./messages/agent-text-bubble";
 import { ChatErrorBoundary } from "./chat-error-boundary";
 import { HitlApprovalCard } from "./interrupts/hitl-approval-card";
 import { Button } from "@/components/ui/button";
@@ -339,9 +340,9 @@ export function HeadlessChat({
                 <Fragment key={`ictx-${originalIndex}-${ci}`}>
                   {ctx.message && (
                     <div className="flex justify-start">
-                      <div className="max-w-[85%] rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 text-sm text-[var(--foreground)] shadow-sm">
+                      <AgentTextBubble>
                         <p className="whitespace-pre-wrap">{ctx.message}</p>
-                      </div>
+                      </AgentTextBubble>
                     </div>
                   )}
                   {ctx.hint && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { AgentEventLine } from "./agent-event-line";
+import { AgentTextBubble } from "./agent-text-bubble";
 import { ErrorCard } from "./error-card";
 import { IntentAckCard } from "../interrupts/intent-ack-card";
 import { MappingResultCard } from "./mapping-result-card";
@@ -56,9 +57,9 @@ export function AgentMessageBubble({
 
     case "clarification":
       return (
-        <div className="max-w-[85%] rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 text-sm text-[var(--foreground)] shadow-sm">
+        <AgentTextBubble>
           <p className="whitespace-pre-wrap">{parsed.data.message}</p>
-        </div>
+        </AgentTextBubble>
       );
 
     case "clarification_resolved":
@@ -88,9 +89,9 @@ export function AgentMessageBubble({
       };
       return (
         <div className="max-w-[85%] space-y-3">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 text-sm text-[var(--foreground)] shadow-sm">
+          <AgentTextBubble>
             <p className="whitespace-pre-wrap">{d.message}</p>
-          </div>
+          </AgentTextBubble>
           <IntentAckCard data={ackData} />
         </div>
       );
@@ -100,9 +101,9 @@ export function AgentMessageBubble({
       const { type, message, corrected_fields } = parsed.data;
       if (type === "intent_reset") {
         return (
-          <div className="max-w-[85%] rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 text-sm text-[var(--foreground)] shadow-sm">
+          <AgentTextBubble>
             <p className="whitespace-pre-wrap">{message}</p>
-          </div>
+          </AgentTextBubble>
         );
       }
       const detail =
@@ -119,9 +120,9 @@ export function AgentMessageBubble({
     case "text":
       if (!parsed.text) return null;
       return (
-        <div className="max-w-[85%] rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 text-sm text-[var(--foreground)] shadow-sm">
+        <AgentTextBubble>
           <p className="whitespace-pre-wrap">{parsed.text}</p>
-        </div>
+        </AgentTextBubble>
       );
 
     default: {

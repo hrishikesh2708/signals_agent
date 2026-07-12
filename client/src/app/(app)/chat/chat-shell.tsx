@@ -90,7 +90,10 @@ export function ChatShell() {
         }
       } catch (err) {
         if (cancelled) return;
-        if (err instanceof ApiError && err.status === 401) return;
+        if (err instanceof ApiError && err.status === 401) {
+          setSessionLoading(false);
+          return;
+        }
         setError(err instanceof Error ? err.message : "session_create_failed");
         setSessionLoading(false);
       }

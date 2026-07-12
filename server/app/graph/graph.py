@@ -18,30 +18,31 @@ def _build() -> StateGraph:
     graph.add_node("intent_clarify", intent_clarify_node)
 
     graph.add_edge(START, "scope_guard")
-    graph.add_conditional_edges(
-        "scope_guard",
-        route_after_scope_guard,
-        {
-            "intent_capture": "intent_capture",
-            "__end__": END,
-        },
-    )
-    graph.add_conditional_edges(
-        "intent_capture",
-        route_after_intent_capture,
-        {
-            "intent_clarify": "intent_clarify",
-            "__end__": END,
-        },
-    )
-    graph.add_conditional_edges(
-        "intent_clarify",
-        route_after_intent_clarify,
-        {
-            "intent_clarify": "intent_clarify",
-            "__end__": END,
-        },
-    )
+    graph.add_edge("scope_guard", END)
+    # graph.add_conditional_edges(
+    #     "scope_guard",
+    #     route_after_scope_guard,
+    #     {
+    #         "intent_capture": "intent_capture",
+    #         "__end__": END,
+    #     },
+    # )
+    # graph.add_conditional_edges(
+    #     "intent_capture",
+    #     route_after_intent_capture,
+    #     {
+    #         "intent_clarify": "intent_clarify",
+    #         "__end__": END,
+    #     },
+    # )
+    # graph.add_conditional_edges(
+    #     "intent_clarify",
+    #     route_after_intent_clarify,
+    #     {
+    #         "intent_clarify": "intent_clarify",
+    #         "__end__": END,
+    #     },
+    # )
     return graph
 
 
