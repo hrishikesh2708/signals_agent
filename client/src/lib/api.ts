@@ -283,7 +283,7 @@ export const api = {
 /** CopilotKit runtime config — single source of truth for agent wiring. */
 export const copilot = {
   /** Trailing slash avoids redirect races during CopilotKit /info discovery. */
-  runtimeUrl: () => `${apiBaseUrl()}/api/copilotkit/`,
+  runtimeUrl: () => `${apiBaseUrl()}/api/v1/copilotkit/`,
   agentId: "signals_agent" as const,
 };
 
