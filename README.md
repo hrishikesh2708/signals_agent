@@ -198,16 +198,11 @@ uv run ruff format .
 
 `docker-compose.yml` defines `postgres`, `server`, and `client` services. Images are stubs until FastAPI and Next.js are implemented — do not expect `docker compose up` to succeed yet.
 
-## Adding Postgres checkpointing later
+## Postgres checkpointing
 
-Postgres is deferred until FastAPI integration. When ready:
-
-1. Add `langgraph-checkpoint-postgres` and `psycopg[binary]` to server dependencies
-2. Use the `postgres` service in `docker-compose.yml`
-3. Add `server/app/graph/checkpoint.py` with `AsyncPostgresSaver`
-4. Wire `build_graph(checkpointer=postgres_saver)` in a FastAPI `lifespan` hook
-
-The graph nodes, state schema, and topology stay the same — only the checkpointer changes.
+FastAPI lifespan uses `AsyncPostgresSaver.from_conn_string` (agent pattern), calls
+`setup()`, and compiles `signals_agent` onto `app.state.compiled_graph`. Session IDs are
+LangGraph `thread_id`s; see `server/app/graph/checkpoint.py` for `delete_thread`.
 
 ## Related projects
 
