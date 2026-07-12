@@ -24,6 +24,12 @@ services:
       DATABASE_URL: postgresql+psycopg://signals:signals@postgres:5432/signals
     ports:
       - "8000:8000"
+    volumes:
+      - ./server/app:/app/server/app
+    command: >
+      sh -c "uv run alembic upgrade head &&
+      exec uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+      --reload --reload-dir app"
     healthcheck:
       test:
         [
@@ -43,8 +49,17 @@ services:
     env_file: .env
     environment:
       BACKEND_URL: http://server:8000
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      WATCHPACK_POLLING: "true"
     ports:
       - "3000:3000"
+    volumes:
+      - ./client/src:/app/src
+      - ./client/public:/app/public
+      - ./client/next.config.ts:/app/next.config.ts
+      - ./client/tsconfig.json:/app/tsconfig.json
+      - ./client/postcss.config.mjs:/app/postcss.config.mjs
+    command: ["npm", "run", "dev", "--", "-H", "0.0.0.0"]
     depends_on:
       server:
         condition: service_healthy

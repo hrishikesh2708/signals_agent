@@ -2,6 +2,7 @@
 
 import { AgentMessageBubble } from "./messages/agent-message-bubble";
 import { AgentTextBubble } from "./messages/agent-text-bubble";
+import { ThinkingCard } from "./messages/thinking-card";
 import { ChatErrorBoundary } from "./chat-error-boundary";
 import { HitlApprovalCard } from "./interrupts/hitl-approval-card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,8 @@ import { CopilotKitCoreRuntimeConnectionStatus } from "@copilotkit/core";
 import { HttpAgent } from "@ag-ui/client";
 import { useAgent, useCopilotKit } from "@copilotkit/react-core/v2";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+type ConnectStatus = "idle" | "connecting" | "ready" | "error";
 
 const INTERRUPT_STEPS: Record<string, { step: number; total: number; label: string }> = {
   select_channels: { step: 1, total: 9, label: "Select ad platforms" },
@@ -46,6 +49,7 @@ export function HeadlessChat({
   const { pending, resolve } = useHeadlessInterrupt();
   const [draft, setDraft] = useState("");
   const [optimisticUserMsg, setOptimisticUserMsg] = useState<string | null>(null);
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
 
   const PICKER_TYPES = new Set(["select_source", "select_object", "select_channels"]);
   type InterruptContext = { afterIndex: number; message?: string; hint?: string };
@@ -173,6 +177,10 @@ export function HeadlessChat({
   }, [pending, agent.messages]);
 
   useEffect(() => {
+    setConnectStatus("idle");
+  }, [sessionId]);
+
+  useEffect(() => {
     if (
       !sessionId ||
       !agent ||
@@ -185,6 +193,7 @@ export function HeadlessChat({
 
     let detached = false;
     lastConnectedAgentRef.current = agent;
+    setConnectStatus("connecting");
 
     const connectAbortController = new AbortController();
     if (agent instanceof HttpAgent) {
@@ -195,14 +204,11 @@ export function HeadlessChat({
       try {
         await copilotkit.connectAgent({ agent });
         if (detached) return;
-
-        const hasAssistant = agent.messages.some((m) => m.role === "assistant");
-        if (!hasAssistant && !agent.isRunning) {
-          await copilotkit.runAgent({ agent });
-        }
+        setConnectStatus("ready");
       } catch (error) {
         if (detached) return;
         lastConnectedAgentRef.current = null;
+        setConnectStatus("error");
         console.error("HeadlessChat: connectAgent failed", error);
       }
     })();
@@ -210,10 +216,24 @@ export function HeadlessChat({
     return () => {
       detached = true;
       lastConnectedAgentRef.current = null;
+      setConnectStatus("idle");
       connectAbortController.abort();
       void agent.detachActiveRun?.();
     };
   }, [agent, copilotkit, sessionId, copilotkit.runtimeConnectionStatus]);
+
+  const isConnecting =
+    connectStatus === "idle" || connectStatus === "connecting";
+
+  const activityMessage = isConnecting
+    ? "Loading agent…"
+    : connectStatus === "ready" && agent.isRunning
+      ? pending
+        ? "Applying your selection…"
+        : "Agent is thinking…"
+      : null;
+
+  const inputBusy = !!pending || agent.isRunning || connectStatus !== "ready";
 
   useEffect(() => {
     if (!optimisticUserMsg) return;
@@ -257,7 +277,7 @@ export function HeadlessChat({
                 variant="ghost"
                 size="sm"
                 onClick={onSwitchProject}
-                disabled={newChatLoading || !!pending || agent.isRunning}
+                disabled={newChatLoading || inputBusy}
               >
                 Switch project
               </Button>
@@ -268,7 +288,7 @@ export function HeadlessChat({
                 variant="outline"
                 size="sm"
                 onClick={onNewChat}
-                disabled={newChatLoading || !!pending || agent.isRunning}
+                disabled={newChatLoading || inputBusy}
               >
                 {newChatLoading ? (
                   <span className="flex items-center gap-2">
@@ -286,7 +306,7 @@ export function HeadlessChat({
       draft={draft}
       onDraftChange={setDraft}
       onSubmit={handleSubmit}
-      inputDisabled={!!pending || agent.isRunning}
+      inputDisabled={inputBusy}
       stepInfo={stepInfo}
       inputPlaceholder={
         pending
@@ -366,11 +386,10 @@ export function HeadlessChat({
           </div>
         )}
 
-        {agent.isRunning && (
-          <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-            <Spinner size="sm" />
-            {pending ? "Applying your selection…" : "Agent is thinking…"}
-          </div>
+        {activityMessage && (
+          <ThinkingCard
+            data={{ type: "thinking", message: activityMessage }}
+          />
         )}
       </ChatErrorBoundary>
     </CopilotChatLayout>

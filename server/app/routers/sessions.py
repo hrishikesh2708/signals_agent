@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies.auth import get_current_session, get_current_user
+from app.graph.welcome import welcome_message
 from app.models.agent_session import AgentSession
 from app.models.project import Project
 from app.models.user import User
@@ -27,9 +28,15 @@ def _session_response(session: AgentSession) -> AgentSessionResponse:
     )
 
 
+def _display_name(user: User) -> str:
+    name = (user.name or "").strip()
+    return name if name else "there"
+
+
 @router.post("/session", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
 async def create_session(
     body: SessionCreate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> SessionResponse:
@@ -46,6 +53,13 @@ async def create_session(
             detail="Project not found",
         )
 
+    compiled_graph = getattr(request.app.state, "compiled_graph", None)
+    if compiled_graph is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="agent not initialized",
+        )
+
     session = AgentSession(
         project_id=project.id,
         user_id=current_user.id,
@@ -53,6 +67,22 @@ async def create_session(
         status="active",
     )
     db.add(session)
+    await db.flush()
+
+    try:
+        # as_node=scope_guard → next=() so the thread stays idle until runAgent.
+        await compiled_graph.aupdate_state(
+            {"configurable": {"thread_id": str(session.id)}},
+            {"messages": [welcome_message(_display_name(current_user))]},
+            as_node="scope_guard",
+        )
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Failed to seed session thread",
+        ) from exc
+
     await db.commit()
     await db.refresh(session)
 

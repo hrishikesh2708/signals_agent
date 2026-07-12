@@ -17,8 +17,8 @@ def _build() -> StateGraph:
     graph.add_node("intent_capture", intent_capture_node)
     graph.add_node("intent_clarify", intent_clarify_node)
 
-    graph.add_edge(START, "scope_guard")
-    graph.add_edge("scope_guard", END)
+    # graph.add_edge(START, "scope_guard")
+    graph.add_edge(START, END)
     # graph.add_conditional_edges(
     #     "scope_guard",
     #     route_after_scope_guard,

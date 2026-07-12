@@ -194,9 +194,27 @@ uv run ruff check .
 uv run ruff format .
 ```
 
-## Docker (skeleton)
+## Docker
 
-`docker-compose.yml` defines `postgres`, `server`, and `client` services. Images are stubs until FastAPI and Next.js are implemented — do not expect `docker compose up` to succeed yet.
+[`docker-compose.yml`](docker-compose.yml) runs postgres, server, and client with hot reload:
+
+- **Server:** mounts `server/app/` with `uvicorn --reload`
+- **Client:** `next dev` with `src/` / `public` mounted
+
+```bash
+docker compose up --build   # first time / after dependency changes
+docker compose up           # daily development
+```
+
+| Change | Rebuild needed? |
+|--------|-----------------|
+| `server/app/**` | No — uvicorn reloads |
+| `client/src/**`, `client/public/**` | No — Next HMR |
+| `server/pyproject.toml` / `client/package.json` | Yes — `docker compose build` |
+
+App: [http://localhost:3000](http://localhost:3000) · API: [http://localhost:8000](http://localhost:8000)
+
+LangGraph Studio (`uv run langgraph dev --port 2024`) stays local and does not use this compose file.
 
 ## Postgres checkpointing
 
