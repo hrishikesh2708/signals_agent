@@ -14,28 +14,24 @@ from app.graph.validators import with_derived_destinations
 def _full_human_intent() -> IntentPhase:
     return {
         "source": "salesforce",
-        "platform_mentions": ["meta"],
         "channels": ["meta"],
         "destinations": [],
         "signal_type": "offline_conversion",
         "status": "partial",
         "open_question": None,
         "attempt": 1,
-        "missing": [],
     }
 
 
 def _partial_source_intent() -> IntentPhase:
     return {
         "source": None,
-        "platform_mentions": ["meta"],
         "channels": ["meta"],
         "destinations": [],
         "signal_type": "offline_conversion",
         "status": "partial",
         "open_question": "source",
         "attempt": 1,
-        "missing": ["source"],
     }
 
 
@@ -118,14 +114,12 @@ async def test_intent_clarify_interrupts_one_field_when_partial() -> None:
 async def test_intent_clarify_channels_payload_is_multi() -> None:
     intent: IntentPhase = {
         "source": "salesforce",
-        "platform_mentions": [],
         "channels": [],
         "destinations": [],
         "signal_type": "offline_conversion",
         "status": "partial",
         "open_question": "channels",
         "attempt": 1,
-        "missing": ["channels"],
     }
 
     with (

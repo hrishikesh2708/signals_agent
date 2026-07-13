@@ -47,14 +47,12 @@ async def test_intent_capture_silent_handoff_no_messages() -> None:
     """Capture updates intent only — no ack / question AIMessage."""
     intent: IntentPhase = {
         "source": "salesforce",
-        "platform_mentions": ["meta"],
         "channels": ["meta"],
         "destinations": [],
         "signal_type": "offline_conversion",
         "status": "partial",
         "open_question": None,
         "attempt": 1,
-        "missing": [],
     }
     llm = MagicMock()
 
@@ -92,13 +90,20 @@ async def test_intent_capture_silent_handoff_no_messages() -> None:
                             "confidence": 0.9,
                         },
                     ],
-                    "mentioned_platforms": ["meta"],
                 },
                 "intent": None,
             }
         )
 
-    build.assert_called_once()
+    build.assert_called_once_with(
+        {
+            "source": "salesforce",
+            "channels": ["meta"],
+            "signal_type": "offline_conversion",
+        },
+        ["salesforce", "meta"],
+        "Send Salesforce offline conversions to Meta",
+    )
     assert result == {"intent": intent}
     assert "messages" not in result
     llm.ainvoke.assert_not_called()
@@ -108,14 +113,12 @@ async def test_intent_capture_silent_handoff_no_messages() -> None:
 async def test_intent_capture_partial_also_silent() -> None:
     intent: IntentPhase = {
         "source": None,
-        "platform_mentions": ["meta"],
         "channels": ["meta"],
         "destinations": [],
         "signal_type": "offline_conversion",
         "status": "partial",
         "open_question": "source",
         "attempt": 1,
-        "missing": ["source"],
     }
 
     with (
@@ -135,7 +138,6 @@ async def test_intent_capture_partial_also_silent() -> None:
                     "status": "in_scope",
                     "reply_kind": "ack",
                     "matched_tokens": [],
-                    "mentioned_platforms": ["meta"],
                 },
                 "intent": None,
             }

@@ -25,14 +25,12 @@ class ScopePhase(TypedDict):
 
 class IntentPhase(TypedDict):
     source: str | None
-    platform_mentions: list[str]
     channels: list[str]  # product_groups (e.g. meta, google) — human field
     destinations: list[str]  # connector ids — machine-only, set after derive
     signal_type: Literal["offline_conversion"] | None
     status: Literal["complete", "partial"]  # complete only after destinations derived
     open_question: IntentOpenQuestion | None
     attempt: int
-    missing: list[str]
 
 
 __all__ = [
