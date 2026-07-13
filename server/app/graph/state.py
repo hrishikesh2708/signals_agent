@@ -5,33 +5,44 @@ from langgraph.graph import add_messages
 from typing_extensions import NotRequired, TypedDict
 
 INTENT_MAX_ATTEMPTS = 3
+CONFIDENCE_THRESHOLD = 0.7
 
 IntentOpenQuestion = Literal["source", "signal_type", "channels"]
+
+
+class MatchedToken(TypedDict):
+    raw: str
+    id: str
+    display_name: str
+    confidence: float
 
 
 class ScopePhase(TypedDict):
     status: Literal["in_scope", "out_of_scope"]
     reply_kind: Literal["ack", "greeting", "redirect"]
-    matched_tokens: list[str]
+    matched_tokens: list[MatchedToken]
     mentioned_platforms: list[str]
 
 
 class IntentPhase(TypedDict):
     source: str | None
     platform_mentions: list[str]
-    channels: list[str]
+    channels: list[str]  # product_groups (e.g. meta, google) — human field
+    destinations: list[str]  # connector ids — machine-only, set after derive
     signal_type: Literal["offline_conversion"] | None
-    status: Literal["complete", "partial"]
+    status: Literal["complete", "partial"]  # complete only after destinations derived
     open_question: IntentOpenQuestion | None
     attempt: int
     missing: list[str]
 
 
 __all__ = [
+    "CONFIDENCE_THRESHOLD",
     "GraphInput",
     "INTENT_MAX_ATTEMPTS",
     "IntentOpenQuestion",
     "IntentPhase",
+    "MatchedToken",
     "ScopePhase",
     "SignalsState",
     "build_invoke_input",

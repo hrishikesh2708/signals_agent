@@ -102,9 +102,10 @@ Or for source / channels:
 ```
 
 ```json
-{"channels": ["meta_capi", "google_offline_conversions"]}
+{"channels": ["meta", "google"]}
 ```
 
+Channels HITL uses `field.multi: true` so multiple product_groups can be selected in one resume.
 ## CLI (multi-turn testing)
 
 Invoke the graph from the command line with in-memory checkpointing:
@@ -177,6 +178,23 @@ signals/
 ```
 
 **Rule:** `server/app/sources/`, `server/app/destinations/`, and `server/app/internal/` are source-of-truth packages — config load, id lookup, auth paths, and live API connectors only. All processing on top of that data (scope validation, intent resolution, mention parsing, HITL clarify payloads) lives in `server/app/graph/`.
+
+### Graph module map
+
+Code in `server/app/graph/` is split by concern so each node owns a clear slice:
+
+| Concern | Location | Rule |
+|---------|----------|------|
+| Graph wiring only | `graph.py` | No business logic |
+| Node orchestration | `nodes/scope_guard.py`, `nodes/intent_capture.py`, `nodes/intent_clarify.py` | Node calls handlers + validators; returns state deltas only |
+| LLM calls | `handlers/scope.py`, `handlers/intent.py` (+ `handlers/catalogs.py`) | Internal `get_llm().ainvoke()`; never append classify JSON to `messages` |
+| Pure Python logic | `validators.py` + `validators_helpers.py` | No LLM imports |
+| Prompt strings | `prompts/scope.py`, `prompts/intent.py` | Builders only; no runtime logic |
+| Routing | `routers.py` | Read state; return next node id |
+| Shared types | `state.py` | `SignalsState`, `ScopePhase`, `IntentPhase` |
+| Session seed (not a node) | `welcome.py` | Fixed `AIMessage`; no LLM |
+
+**Incremental wiring:** edges are enabled as each node is verified. Current: `START → scope_guard → intent_capture → intent_clarify (HITL loop | derive + summary) → END`.
 
 ## Development
 

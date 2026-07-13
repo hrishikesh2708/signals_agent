@@ -2,27 +2,30 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from ag_ui.core.events import RunFinishedEvent
 
+from app.graph.welcome import welcome_text
 from app.models.agent_session import AgentSession
 from app.routers.copilotkit import (
     AGENT_NAME,
     _inject_session_context,
+    _is_agent_connect,
     _is_info_request,
 )
 
 
-def _register_and_get_token(client, *, email: str | None = None) -> str:
+def _register_and_get_token(client, *, email: str | None = None, name: str = "Copilot User") -> str:
     response = client.post(
         "/api/v1/auth/register",
         json={
             "email": email or f"copilot-{uuid.uuid4()}@example.com",
             "password": "securepass",
-            "name": "Copilot User",
+            "name": name,
         },
     )
     assert response.status_code == 201
@@ -56,6 +59,26 @@ def _create_session(client, user_token: str, project_id: str) -> dict:
     return response.json()
 
 
+def _thread_snapshot(client, session_id: str):
+    return client.portal.call(
+        client.app.state.compiled_graph.aget_state,
+        {"configurable": {"thread_id": session_id}},
+    )
+
+
+def _parse_sse_events(body: str) -> list[dict]:
+    events: list[dict] = []
+    for block in body.split("\n\n"):
+        line = block.strip()
+        if not line.startswith("data:"):
+            continue
+        payload = line[len("data:") :].strip()
+        if not payload:
+            continue
+        events.append(json.loads(payload))
+    return events
+
+
 def test_is_info_request_detects_probes() -> None:
     assert _is_info_request(None, path="", method="GET")
     assert _is_info_request({"method": "info"}, path="", method="POST")
@@ -64,6 +87,22 @@ def test_is_info_request_detects_probes() -> None:
     )
     assert not _is_info_request(
         {"method": "agent/run"}, path="", method="POST"
+    )
+    assert not _is_info_request(
+        {"method": "agent/connect"}, path="", method="POST"
+    )
+
+
+def test_is_agent_connect_detects_envelope_and_path() -> None:
+    assert _is_agent_connect({"method": "agent/connect"}, path="")
+    assert not _is_agent_connect({"method": "agent/run"}, path="")
+    assert _is_agent_connect(
+        {"threadId": "t", "messages": []},
+        path=f"agent/{AGENT_NAME}/connect",
+    )
+    assert not _is_agent_connect(
+        {"threadId": "t", "messages": []},
+        path=f"agent/{AGENT_NAME}/run",
     )
 
 
@@ -252,3 +291,119 @@ def test_copilotkit_unknown_agent_returns_404(client) -> None:
         },
     )
     assert response.status_code == 404
+
+
+def test_agent_connect_hydrates_welcome_without_invoking_graph(client) -> None:
+    """connectAgent must snapshot welcome only — no scope_guard turn."""
+    user_name = "Connect Hydrate"
+    user_token = _register_and_get_token(client, name=user_name)
+    project_id = _create_project(client, user_token)
+    session = _create_session(client, user_token, project_id)
+    thread_id = session["session_id"]
+    run_id = str(uuid.uuid4())
+
+    before = _thread_snapshot(client, thread_id)
+    assert before.next == ()
+    assert len(before.values.get("messages") or []) == 1
+
+    run_calls: list = []
+    real_agent = client.app.state.langgraph_agent
+    real_run = real_agent.run
+
+    async def tracking_run(input_data):
+        run_calls.append(input_data)
+        async for event in real_run(input_data):
+            yield event
+
+    real_agent.run = tracking_run
+    try:
+        response = client.post(
+            "/api/v1/copilotkit/",
+            headers={
+                **_auth_headers(session["token"], project_id=project_id),
+                "Accept": "text/event-stream",
+            },
+            json={
+                "method": "agent/connect",
+                "params": {"agentId": AGENT_NAME},
+                "body": {
+                    "threadId": thread_id,
+                    "runId": run_id,
+                    "state": {},
+                    "messages": [],
+                    "tools": [],
+                    "context": [],
+                    "forwardedProps": {},
+                },
+            },
+        )
+    finally:
+        real_agent.run = real_run
+
+    assert response.status_code == 200
+    assert "text/event-stream" in response.headers["content-type"]
+    assert run_calls == []
+
+    events = _parse_sse_events(response.text)
+    types = [e.get("type") for e in events]
+    assert "RUN_STARTED" in types
+    assert "MESSAGES_SNAPSHOT" in types
+    assert "STATE_SNAPSHOT" in types
+    assert "RUN_FINISHED" in types
+    assert "STEP_STARTED" not in types
+    assert "TEXT_MESSAGE_START" not in types
+
+    snapshot_event = next(e for e in events if e.get("type") == "MESSAGES_SNAPSHOT")
+    messages = snapshot_event.get("messages") or []
+    assert len(messages) == 1
+    assert messages[0]["role"] == "assistant"
+    assert messages[0]["content"] == welcome_text(user_name)
+
+    after = _thread_snapshot(client, thread_id)
+    assert after.next == ()
+    assert len(after.values.get("messages") or []) == 1
+
+
+def test_agent_connect_path_hydrates_without_run(client) -> None:
+    user_token = _register_and_get_token(client, name="Path Connect")
+    project_id = _create_project(client, user_token)
+    session = _create_session(client, user_token, project_id)
+    thread_id = session["session_id"]
+    run_id = str(uuid.uuid4())
+
+    run_calls: list = []
+    real_agent = client.app.state.langgraph_agent
+    real_run = real_agent.run
+
+    async def tracking_run(input_data):
+        run_calls.append(input_data)
+        async for event in real_run(input_data):
+            yield event
+
+    real_agent.run = tracking_run
+    try:
+        response = client.post(
+            f"/api/v1/copilotkit/agent/{AGENT_NAME}/connect",
+            headers={
+                **_auth_headers(session["token"], project_id=project_id),
+                "Accept": "text/event-stream",
+            },
+            json={
+                "threadId": thread_id,
+                "runId": run_id,
+                "state": {},
+                "messages": [],
+                "tools": [],
+                "context": [],
+                "forwardedProps": {},
+            },
+        )
+    finally:
+        real_agent.run = real_run
+
+    assert response.status_code == 200
+    assert run_calls == []
+    types = [e.get("type") for e in _parse_sse_events(response.text)]
+    assert "MESSAGES_SNAPSHOT" in types
+    assert "RUN_FINISHED" in types
+    assert _thread_snapshot(client, thread_id).next == ()

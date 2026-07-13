@@ -9,9 +9,7 @@ def route_after_scope_guard(state: dict) -> str:
 
 
 def route_after_intent_capture(state: dict) -> str:
-    intent = state.get("intent") or {}
-    if intent.get("status") == "complete":
-        return "__end__"
+    del state  # capture always hands off; intent completeness is clarify's job
     return "intent_clarify"
 
 
@@ -21,4 +19,7 @@ def route_after_intent_clarify(state: dict) -> str:
         return "__end__"
     if intent.get("attempt", 0) > INTENT_MAX_ATTEMPTS:
         return "__end__"
-    return "intent_clarify"
+    # Loop only while a human field still needs HITL.
+    if intent.get("open_question") is not None:
+        return "intent_clarify"
+    return "__end__"

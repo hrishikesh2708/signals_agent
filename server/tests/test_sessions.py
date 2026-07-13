@@ -135,7 +135,13 @@ def test_create_session_seeds_welcome_in_thread(client) -> None:
     assert response.status_code == 201
     session_id = response.json()["session_id"]
 
-    messages = _thread_messages(client, session_id)
+    snapshot = client.portal.call(
+        client.app.state.compiled_graph.aget_state,
+        {"configurable": {"thread_id": session_id}},
+    )
+    # as_node=scope_guard → idle until runAgent (connect must not invoke).
+    assert snapshot.next == ()
+    messages = list(snapshot.values.get("messages") or [])
     assert len(messages) == 1
     welcome = messages[0]
     assert isinstance(welcome, AIMessage)

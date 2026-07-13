@@ -1,14 +1,16 @@
 from app.destinations import get_destination_registry
+from app.graph.routers import route_after_intent_capture, route_after_intent_clarify
 from app.graph.validators import (
     build_clarify_payload,
     build_intent_from_extract,
+    derive_destinations,
     infer_signal_type,
-    mention_destinations,
     merge_intent_selection,
     parse_clarify_selection,
     recompute_intent,
     resolve_product_groups,
     sanitize_scope_hints,
+    with_derived_destinations,
 )
 
 
@@ -34,116 +36,160 @@ def test_resolve_google_customer_match_disambiguator() -> None:
     assert result == ["google_customer_match"]
 
 
-def test_mention_destinations_bare_google() -> None:
-    result = mention_destinations("send conversions to google ads", "offline_conversion")
-    assert result == ["google_offline_conversions"]
-
-
-def test_sanitize_scope_moves_connectors_to_platforms() -> None:
+def test_sanitize_scope_maps_connector_channels_to_product_group() -> None:
     matched, platforms = sanitize_scope_hints(
-        ["salesforce", "meta_capi", "google_offline_conversions", "google_customer_match"],
+        [
+            {
+                "raw": "Salesforce",
+                "id": "salesforce",
+                "display_name": "Salesforce",
+                "confidence": 0.95,
+            },
+            {
+                "raw": "Meta CAPI",
+                "id": "meta_capi",
+                "display_name": "Meta",
+                "confidence": 0.9,
+            },
+            {
+                "raw": "Google Ads",
+                "id": "google_offline_conversions",
+                "display_name": "Google",
+                "confidence": 0.9,
+            },
+        ],
         "connect salesforce to meta and google",
     )
-    assert matched == ["salesforce"]
+    ids = {token["id"] for token in matched}
+    assert "salesforce" in ids
+    assert "meta" in ids
+    assert "google" in ids
     assert set(platforms) == {"meta", "google"}
 
 
-def test_build_intent_complete_from_text() -> None:
+def test_build_intent_human_fields_full_still_partial() -> None:
+    """Capture never completes — destinations stay empty until clarify derives."""
     intent = build_intent_from_extract(
         {
             "source": "salesforce",
-            "channels": ["meta_capi"],
+            "channels": ["meta"],
             "signal_type": "offline_conversion",
         },
-        ["salesforce", "meta_capi", "offline_conversion"],
+        ["salesforce", "meta", "offline_conversion"],
         "Send Salesforce offline conversions to Meta",
     )
-    assert intent["status"] == "complete"
+    assert intent["status"] == "partial"
     assert intent["source"] == "salesforce"
-    assert intent["channels"] == ["meta_capi"]
+    assert intent["channels"] == ["meta"]
+    assert intent["destinations"] == []
     assert intent["signal_type"] == "offline_conversion"
     assert intent["open_question"] is None
 
 
+def test_build_intent_never_sets_destinations() -> None:
+    intent = build_intent_from_extract(
+        {
+            "source": "salesforce",
+            "channels": ["meta", "google"],
+            "signal_type": "offline_conversion",
+            "destinations": ["meta_capi"],
+        },
+        [],
+        "Send Salesforce offline conversions to Meta and Google",
+    )
+    assert intent["destinations"] == []
+    assert set(intent["channels"]) == {"meta", "google"}
+
+
+def test_build_intent_normalizes_connector_ids_to_product_groups() -> None:
+    intent = build_intent_from_extract(
+        {
+            "source": "salesforce",
+            "channels": ["meta_capi", "google_offline_conversions"],
+            "signal_type": "offline_conversion",
+        },
+        [],
+        "Send Salesforce offline conversions to Meta and Google",
+    )
+    assert set(intent["channels"]) == {"meta", "google"}
+    assert intent["destinations"] == []
+
+
 def test_build_intent_partial_missing_source() -> None:
     intent = build_intent_from_extract(
-        {"source": None, "channels": ["meta_capi"], "signal_type": "offline_conversion"},
+        {"source": None, "channels": ["meta"], "signal_type": "offline_conversion"},
         [],
         "send offline conversions to Meta",
     )
     assert intent["status"] == "partial"
     assert intent["open_question"] == "source"
     assert "source" in intent["missing"]
+    assert intent["channels"] == ["meta"]
 
 
-def test_build_intent_strips_customer_match_for_offline_v1() -> None:
+def test_build_intent_maps_customer_match_connector_to_google_group() -> None:
     intent = build_intent_from_extract(
-        {"source": "hubspot", "channels": ["google_customer_match"], "signal_type": "offline_conversion"},
+        {
+            "source": "hubspot",
+            "channels": ["google_customer_match"],
+            "signal_type": "offline_conversion",
+        },
         [],
         "hubspot offline conversions to google customer match audience",
     )
-    assert "google_customer_match" not in intent["channels"]
+    assert intent["channels"] == ["google"]
+    assert intent["destinations"] == []
 
 
-def test_merge_intent_selection_complete() -> None:
+def test_merge_intent_selection_fills_human_fields() -> None:
     current = recompute_intent(None, [], [], None, 1)
     merged = merge_intent_selection(
         {
             "source": "salesforce",
-            "channels": ["meta_capi"],
+            "channels": ["meta"],
             "signal_type": "offline_conversion",
         },
         current,
         "Send Salesforce offline conversions to Meta",
     )
-    assert merged["status"] == "complete"
+    assert merged["status"] == "partial"
     assert merged["open_question"] is None
+    assert merged["channels"] == ["meta"]
+    assert merged["destinations"] == []
 
 
-def test_merge_rejects_customer_match_selection() -> None:
-    current = recompute_intent("salesforce", ["google"], [], None, 1)
+def test_merge_normalizes_channel_selection_to_product_group() -> None:
+    current = recompute_intent("salesforce", ["google"], [], "offline_conversion", 1)
     merged = merge_intent_selection(
         {
-            "source": "salesforce",
-            "channels": ["google_customer_match"],
-            "signal_type": "offline_conversion",
+            "channels": ["google_customer_match", "meta_capi"],
         },
         current,
         "",
     )
-    assert "google_customer_match" not in merged["channels"]
-    assert merged["channels"] == ["google_offline_conversions"]
-    assert merged["status"] == "complete"
-
-
-def test_mention_meta_and_google_offline() -> None:
-    result = mention_destinations("send offline conversions to meta and google", "offline_conversion")
-    assert set(result) == {"meta_capi", "google_offline_conversions"}
-
-
-def test_mention_youtube_defaults_to_google_offline() -> None:
-    result = mention_destinations("send to youtube", None)
-    assert result == ["google_offline_conversions"]
+    assert set(merged["channels"]) == {"google", "meta"}
+    assert merged["open_question"] is None
+    assert merged["destinations"] == []
 
 
 def test_build_intent_meta_google_waits_for_signal_type() -> None:
     intent = build_intent_from_extract(
-        {"source": "salesforce", "channels": ["meta_capi", "google_offline_conversions"], "signal_type": None},
+        {"source": "salesforce", "channels": ["meta", "google"], "signal_type": None},
         ["salesforce"],
         "connect salesforce to meta and google",
         ["meta", "google"],
     )
     assert intent["source"] == "salesforce"
-    assert intent["channels"] == []
-    assert set(intent["platform_mentions"]) == {"meta", "google"}
+    assert set(intent["channels"]) == {"meta", "google"}
     assert intent["signal_type"] is None
     assert intent["status"] == "partial"
     assert intent["open_question"] == "signal_type"
+    assert intent["destinations"] == []
 
 
-def test_build_intent_resolves_connectors_after_signal_type() -> None:
+def test_build_intent_resolves_channels_after_signal_type() -> None:
     current = build_intent_from_extract(
-        {"source": "salesforce", "channels": [], "signal_type": None},
+        {"source": "salesforce", "channels": ["meta", "google"], "signal_type": None},
         ["salesforce"],
         "connect salesforce to meta and google",
         ["meta", "google"],
@@ -153,8 +199,10 @@ def test_build_intent_resolves_connectors_after_signal_type() -> None:
         current,
         "connect salesforce to meta and google",
     )
-    assert merged["status"] == "complete"
-    assert set(merged["channels"]) == {"meta_capi", "google_offline_conversions"}
+    assert merged["open_question"] is None
+    assert set(merged["channels"]) == {"meta", "google"}
+    assert merged["destinations"] == []
+    assert merged["status"] == "partial"
 
 
 def test_infer_signal_type_requires_explicit_mention() -> None:
@@ -168,6 +216,7 @@ def test_build_intent_google_audience_signal_type() -> None:
         [],
         "create a google audience",
     )
+    assert intent["destinations"] == []
     assert "google_customer_match" not in intent["channels"]
 
 
@@ -183,7 +232,7 @@ def test_clarify_payload_single_field_for_source() -> None:
 
 def test_clarify_payload_signal_type_shows_platform_context() -> None:
     intent = build_intent_from_extract(
-        {"source": "salesforce", "channels": [], "signal_type": None},
+        {"source": "salesforce", "channels": ["meta", "google"], "signal_type": None},
         ["salesforce"],
         "connect salesforce to meta and google",
         ["meta", "google"],
@@ -191,9 +240,19 @@ def test_clarify_payload_signal_type_shows_platform_context() -> None:
     assert intent["open_question"] == "signal_type"
     payload = build_clarify_payload(intent)
     assert payload["open_question"] == "signal_type"
-    assert payload["context"]["platform_mentions"] == ["meta", "google"]
-    assert payload["context"]["channels"] == []
+    assert set(payload["context"]["platform_mentions"]) == {"meta", "google"}
+    assert set(payload["context"]["channels"]) == {"meta", "google"}
     assert payload["field"]["selected"] == "offline_conversion"
+
+
+def test_clarify_payload_channels_uses_product_groups_multi() -> None:
+    intent = recompute_intent("salesforce", [], [], "offline_conversion", 1)
+    assert intent["open_question"] == "channels"
+    payload = build_clarify_payload(intent)
+    assert payload["open_question"] == "channels"
+    assert payload["field"]["multi"] is True
+    option_ids = {option["id"] for option in payload["field"]["options"]}
+    assert option_ids == {"meta", "google"}
 
 
 def test_parse_clarify_selection_accepts_studio_field_payload() -> None:
@@ -209,9 +268,9 @@ def test_parse_clarify_selection_accepts_bare_string() -> None:
     assert parsed == {"signal_type": "offline_conversion"}
 
 
-def test_merge_from_studio_field_payload_completes() -> None:
+def test_merge_from_studio_field_payload_completes_human_fields() -> None:
     current = build_intent_from_extract(
-        {"source": "salesforce", "channels": [], "signal_type": None},
+        {"source": "salesforce", "channels": ["meta", "google"], "signal_type": None},
         ["salesforce"],
         "connect salesforce to meta and google",
         ["meta", "google"],
@@ -221,6 +280,79 @@ def test_merge_from_studio_field_payload_completes() -> None:
         current,
         "connect salesforce to meta and google",
     )
-    assert merged["status"] == "complete"
+    assert merged["open_question"] is None
     assert merged["signal_type"] == "offline_conversion"
-    assert set(merged["channels"]) == {"meta_capi", "google_offline_conversions"}
+    assert set(merged["channels"]) == {"meta", "google"}
+    assert merged["destinations"] == []
+    assert merged["status"] == "partial"
+
+
+def test_route_after_intent_capture_always_clarify() -> None:
+    assert route_after_intent_capture({"intent": {"status": "partial", "open_question": None}}) == (
+        "intent_clarify"
+    )
+    assert route_after_intent_capture({"intent": {"status": "partial", "open_question": "source"}}) == (
+        "intent_clarify"
+    )
+    assert route_after_intent_capture({}) == "intent_clarify"
+
+
+def test_derive_destinations_matches_product_group_and_signal_type() -> None:
+    assert derive_destinations(["meta"], "offline_conversion") == ["meta_capi"]
+    assert derive_destinations(["google"], "offline_conversion") == ["google_offline_conversions"]
+    assert set(derive_destinations(["meta", "google"], "offline_conversion")) == {
+        "meta_capi",
+        "google_offline_conversions",
+    }
+
+
+def test_derive_destinations_empty_when_inputs_incomplete() -> None:
+    assert derive_destinations([], "offline_conversion") == []
+    assert derive_destinations(["meta"], None) == []
+    assert derive_destinations(["meta"], "audience") == []  # meta_capi is offline only
+
+
+def test_with_derived_destinations_marks_complete() -> None:
+    intent = build_intent_from_extract(
+        {
+            "source": "salesforce",
+            "channels": ["meta", "google"],
+            "signal_type": "offline_conversion",
+        },
+        [],
+        "Send Salesforce offline conversions to Meta and Google",
+    )
+    assert intent["status"] == "partial"
+    assert intent["open_question"] is None
+
+    completed = with_derived_destinations(intent)
+    assert completed["status"] == "complete"
+    assert completed["open_question"] is None
+    assert set(completed["destinations"]) == {"meta_capi", "google_offline_conversions"}
+    assert completed["missing"] == []
+
+
+def test_route_after_intent_clarify_ends_on_complete() -> None:
+    assert (
+        route_after_intent_clarify({"intent": {"status": "complete", "open_question": None}})
+        == "__end__"
+    )
+    assert (
+        route_after_intent_clarify(
+            {"intent": {"status": "partial", "open_question": "source", "attempt": 1}}
+        )
+        == "intent_clarify"
+    )
+    # open_question None without complete should not loop (derive happens in-node)
+    assert (
+        route_after_intent_clarify(
+            {"intent": {"status": "partial", "open_question": None, "attempt": 1}}
+        )
+        == "__end__"
+    )
+    assert (
+        route_after_intent_clarify(
+            {"intent": {"status": "partial", "open_question": "source", "attempt": 4}}
+        )
+        == "__end__"
+    )

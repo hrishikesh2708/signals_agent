@@ -14,6 +14,19 @@ def test_build_studio_graph_compiles() -> None:
     assert "__end__" in node_names
 
 
+def test_build_studio_graph_start_to_scope_guard() -> None:
+    """START → scope_guard → intent_capture → intent_clarify | END."""
+    graph = build_studio_graph()
+    edges = {(e.source, e.target) for e in graph.get_graph().edges}
+    assert ("__start__", "scope_guard") in edges
+    assert ("__start__", "__end__") not in edges
+    assert ("scope_guard", "intent_capture") in edges
+    assert ("scope_guard", "__end__") in edges
+    assert ("intent_capture", "intent_clarify") in edges
+    assert ("intent_capture", "__end__") not in edges
+
+
+
 def test_build_studio_graph_name() -> None:
     graph = build_studio_graph()
     assert graph.name == "signals_agent"

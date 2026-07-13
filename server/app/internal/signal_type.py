@@ -18,13 +18,23 @@ def load_signal_types_config() -> SignalTypesConfig:
     return SignalTypesConfig(**raw_data)
 
 
+def get_signal_type() -> SignalTypesConfig:
+    """Public entry point for the full signal-types config."""
+    return load_signal_types_config()
+
+
 def get_signal_type_ids() -> set[str]:
-    config = load_signal_types_config()
+    config = get_signal_type()
     return {signal.id for signal in config.signal_types}
 
 
+def get_active_signal_type_ids() -> set[str]:
+    config = get_signal_type()
+    return {signal.id for signal in config.signal_types if signal.active}
+
+
 def get_active_signal_type_id() -> str:
-    config = load_signal_types_config()
+    config = get_signal_type()
     for signal in config.signal_types:
         if signal.active:
             return signal.id
@@ -32,7 +42,7 @@ def get_active_signal_type_id() -> str:
 
 
 def get_signal_type_picker_options() -> list[tuple[str, bool, str | None]]:
-    config = load_signal_types_config()
+    config = get_signal_type()
     options: list[tuple[str, bool, str | None]] = []
     for signal in config.signal_types:
         if signal.active:
@@ -40,13 +50,3 @@ def get_signal_type_picker_options() -> list[tuple[str, bool, str | None]]:
         else:
             options.append((signal.id, False, "Not available"))
     return options
-
-
-def format_signal_type_lines() -> str:
-    config = load_signal_types_config()
-    lines: list[str] = []
-    for signal in config.signal_types:
-        alias_preview = ", ".join(signal.aliases[:4])
-        active = "active" if signal.active else "inactive"
-        lines.append(f'  "{signal.id}" ({active}; aliases include: {alias_preview})')
-    return "\n".join(lines) or "  (none)"

@@ -4,7 +4,6 @@ import re
 from functools import lru_cache
 
 from app.destinations.registry import (
-    GOOGLE_CUSTOMER_MATCH,
     VALID_PLATFORMS,
     DestinationRegistry,
     get_destination_registry,
@@ -41,6 +40,12 @@ class Lookup:
             index[destination.display_name.lower()] = destination.id
             for alias in destination.aliases:
                 index[alias.lower()] = destination.id
+            if destination.product_group:
+                # Prefer keeping an existing connector mapping; product_group
+                # resolution uses normalize_channel.
+                index.setdefault(destination.product_group.lower(), destination.product_group)
+                if destination.short_label:
+                    index.setdefault(destination.short_label.lower(), destination.product_group)
 
         for signal in load_signal_types_config().signal_types:
             index[signal.id.lower()] = signal.id
@@ -79,10 +84,35 @@ class Lookup:
             return active
         return None
 
-    def normalize_connector(self, value: str) -> str | None:
+    def product_group_ids(self) -> frozenset[str]:
+        return frozenset(
+            entry.product_group
+            for entry in self._destination_registry.list_destinations()
+            if entry.product_group
+        )
+
+    def normalize_channel(self, value: str | None) -> str | None:
+        """Normalize to a destination product_group (never a connector id)."""
+        if not value:
+            return None
+        needle = value.strip().lower()
+        if not needle:
+            return None
+
+        groups = self.product_group_ids()
+        if needle in groups:
+            return needle
+
+        if needle in VALID_PLATFORMS and needle in groups:
+            return needle
+
         canonical = self.resolve(value)
-        if canonical in self._destination_registry.destination_ids:
+        if canonical in groups:
             return canonical
+        if canonical in self._destination_registry.destination_ids:
+            entry = self._destination_registry.get_destination(canonical)
+            if entry and entry.product_group:
+                return entry.product_group
         return None
 
 
@@ -93,9 +123,7 @@ def get_lookup() -> Lookup:
 
 class MentionParser:
     def __init__(self, destination_registry: DestinationRegistry) -> None:
-        self._destination_registry = destination_registry
         self._platform_patterns = self._build_platform_patterns(destination_registry)
-        self._connector_patterns = self._build_connector_patterns(destination_registry)
 
     @staticmethod
     def _build_platform_patterns(
@@ -117,30 +145,11 @@ class MentionParser:
                 patterns.append((platform, re.compile(rf"\b{escaped}\b", re.IGNORECASE)))
         return patterns
 
-    @staticmethod
-    def _build_connector_patterns(
-        destination_registry: DestinationRegistry,
-    ) -> list[tuple[str, re.Pattern[str]]]:
-        patterns: list[tuple[str, re.Pattern[str]]] = []
-        for entry in destination_registry.list_destinations():
-            terms = {entry.id, entry.display_name, entry.channel_display_name, *entry.aliases}
-            for term in terms:
-                escaped = re.escape(term.lower())
-                patterns.append((entry.id, re.compile(rf"\b{escaped}\b", re.IGNORECASE)))
-        return patterns
-
     def platforms_in_text(self, text: str) -> list[str]:
         hits: list[str] = []
         for platform, pattern in self._platform_patterns:
             if pattern.search(text) and platform not in hits:
                 hits.append(platform)
-        return hits
-
-    def connectors_in_text(self, text: str) -> list[str]:
-        hits: list[str] = []
-        for dest_id, pattern in self._connector_patterns:
-            if pattern.search(text) and dest_id not in hits:
-                hits.append(dest_id)
         return hits
 
     def offline_signal_in_text(self, text: str) -> bool:
@@ -171,6 +180,7 @@ def dedupe(items: list[str]) -> list[str]:
 
 
 def connector_to_platform(dest_id: str) -> str | None:
+    """Map a connector id to its product_group / platform (for scope token sanitization)."""
     entry = get_destination_registry().get_destination(dest_id)
     if entry is None:
         return None
@@ -190,6 +200,7 @@ def resolve_product_groups(
     text: str,
     signal_type: str | None,
 ) -> list[str]:
+    """Disambiguate connector ids within a product_group (used by derive_destinations)."""
     by_id = destination_registry.destinations_by_id()
     groups: dict[str, list[str]] = {}
     ungrouped: list[str] = []
@@ -234,41 +245,3 @@ def resolve_product_groups(
         resolved.append(picked[0])
 
     return dedupe(resolved)
-
-
-def apply_v1_channel_rules(
-    destination_registry: DestinationRegistry,
-    channels: list[str],
-    text: str,
-    signal_type: str | None,
-) -> list[str]:
-    if GOOGLE_CUSTOMER_MATCH in channels:
-        channels = [channel for channel in channels if channel != GOOGLE_CUSTOMER_MATCH]
-    return resolve_product_groups(destination_registry, channels, text, signal_type)
-
-
-def resolve_platforms_to_channels(
-    destination_registry: DestinationRegistry,
-    platforms: list[str],
-    text: str,
-    signal_type: str,
-) -> list[str]:
-    by_id = destination_registry.destinations_by_id()
-    channels: list[str] = []
-
-    for platform in dedupe(platforms):
-        members = [entry.id for entry in by_id.values() if entry.platform == platform]
-        if not members:
-            continue
-        if len(members) == 1:
-            channels.append(members[0])
-            continue
-        channels.extend(resolve_product_groups(destination_registry, members, text, signal_type))
-
-    return apply_v1_channel_rules(destination_registry, dedupe(channels), text, signal_type)
-
-
-def mention_destinations(text: str, signal_type: str | None = None) -> list[str]:
-    destination_registry = get_destination_registry()
-    hits = get_mention_parser().connectors_in_text(text)
-    return resolve_product_groups(destination_registry, hits, text, signal_type)
