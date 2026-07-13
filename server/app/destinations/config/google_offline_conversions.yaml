@@ -2,7 +2,8 @@ id: google_offline_conversions
 version: "1.0"
 enabled: true
 display_name: Google Offline Conversions
-short_label: Google (offline)
+# short_label: Google (offline)
+short_label: Google
 detail: Offline Conversions
 aliases: [google, google ads, adwords, youtube]
 connector: google_offline_conversions

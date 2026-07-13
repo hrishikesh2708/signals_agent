@@ -9,11 +9,10 @@ from app.graph.handlers import (
 )
 from app.graph.llm import get_llm
 from app.graph.state import INTENT_MAX_ATTEMPTS, IntentPhase, SignalsState
-from app.graph.validators import (
+from app.graph.validators.intent_clarify import (
     build_clarify_payload,
-    last_human_text,
-    matched_token_ids,
     merge_intent_selection,
+    scope_hint_ids,
     with_derived_destinations,
 )
 
@@ -31,7 +30,7 @@ async def _complete_with_summary(
 
 
 async def intent_clarify_node(state: SignalsState) -> dict:
-    """One-field HITL loop; when human fields filled → derive destinations + summary."""
+    """Ask (LLM) then interrupt (static payload) per open field via hitl_prompted."""
     llm = get_llm()
     intent = state.get("intent")
     if not intent:
@@ -46,15 +45,19 @@ async def intent_clarify_node(state: SignalsState) -> dict:
         return await _complete_with_summary(intent, state.get("user_name"))
 
     messages = state["messages"]
-    scope = state.get("scope") or {}
-    scope_tokens = matched_token_ids(scope)
-    scope_platforms = scope.get("mentioned_platforms", [])
-    latest_text = last_human_text(messages)
+    scope_hints = scope_hint_ids(state.get("scope"))
 
-    payload = build_clarify_payload(intent)
-    selection = interrupt(payload)
+    # Visit A: emit LLM ask, then re-enter for interrupt while open_question is set.
+    if not intent.get("hitl_prompted", False):
+        ask_text = await compose_intent_clarify_message(llm, messages, intent, scope_hints)
+        return {
+            "intent": {**intent, "hitl_prompted": True},
+            "messages": [AIMessage(content=ask_text)],
+        }
 
-    merged = merge_intent_selection(selection, intent, latest_text, scope_tokens, scope_platforms)
+    # Visit B: static picker interrupt → thin merge on resume.
+    selection = interrupt(build_clarify_payload(intent))
+    merged = merge_intent_selection(selection, intent)
 
     if merged.get("open_question") is None:
         merged["attempt"] = intent["attempt"]
@@ -68,5 +71,5 @@ async def intent_clarify_node(state: SignalsState) -> dict:
         merged["status"] = "partial"
         return {"intent": merged, "messages": [AIMessage(content=text)]}
 
-    retry_text = await compose_intent_clarify_message(llm, messages, merged, scope_tokens)
-    return {"intent": merged, "messages": [AIMessage(content=retry_text)]}
+    # Next self-loop visit asks again (hitl_prompted already False from merge).
+    return {"intent": merged}

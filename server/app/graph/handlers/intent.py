@@ -124,7 +124,7 @@ async def compose_intent_clarify_message(
     llm: ChatOpenAI,
     messages: list[BaseMessage],
     intent: IntentPhase,
-    scope_tokens: list[str],
+    scope_hint_ids: list[str],
 ) -> str:
     open_question = intent.get("open_question") or "source"
     try:
@@ -133,11 +133,10 @@ async def compose_intent_clarify_message(
                 SystemMessage(
                     content=build_intent_clarify_prompt(
                         intent["source"],
-                        intent.get("platform_mentions", []),
                         intent["channels"],
                         intent["signal_type"],
                         open_question,
-                        scope_tokens,
+                        scope_hint_ids,
                     )
                 ),
                 *messages,

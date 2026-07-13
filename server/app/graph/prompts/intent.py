@@ -40,17 +40,16 @@ INTENT_CLARIFY_SYSTEM = """You are Signals Setup Copilot. Intent is partial — 
 
 Current intent:
   source: {source}
-  platform_mentions: {platform_mentions}
   channels: {channels}
   signal_type: {signal_type}
   open_question: {open_question}
-  scope hints: {scope_tokens}
+  scope hints: {scope_hint_ids}
 
 Write one short paragraph that:
 1. Uses scope hints for "did you mean …?" when relevant
 2. Asks ONLY about open_question ({open_question}) — do not ask them to re-pick everything together
 3. If open_question is signal_type, say you need the signal type before choosing destinations
-4. If open_question is channels, platform_mentions show what they asked for; confirm the ad platforms (product groups) to send to
+4. If open_question is channels, confirm the ad platforms (product groups) to send to
 
 Do not list every option — the picker shows those. No markdown fences."""
 
@@ -100,19 +99,17 @@ def build_intent_summary_prompt(
 
 def build_intent_clarify_prompt(
     source: str | None,
-    platform_mentions: list[str],
     channels: list[str],
     signal_type: str | None,
     open_question: str,
-    scope_tokens: list[str],
+    scope_hint_ids: list[str],
 ) -> str:
     return INTENT_CLARIFY_SYSTEM.format(
         source=source,
-        platform_mentions=platform_mentions or [],
         channels=channels,
         signal_type=signal_type,
         open_question=open_question,
-        scope_tokens=scope_tokens or [],
+        scope_hint_ids=scope_hint_ids or [],
     )
 
 

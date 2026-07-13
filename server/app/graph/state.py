@@ -31,6 +31,7 @@ class IntentPhase(TypedDict):
     status: Literal["complete", "partial"]  # complete only after destinations derived
     open_question: IntentOpenQuestion | None
     attempt: int
+    hitl_prompted: bool  # False until ask AIMessage sent for current open_question
 
 
 __all__ = [
