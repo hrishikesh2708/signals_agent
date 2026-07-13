@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from functools import lru_cache
 
+from langchain_core.messages import BaseMessage
+
 from app.destinations.registry import (
     VALID_PLATFORMS,
     DestinationRegistry,
@@ -10,6 +12,15 @@ from app.destinations.registry import (
 )
 from app.internal.signal_type import get_active_signal_type_id, load_signal_types_config
 from app.sources.registry import SourceRegistry, get_source_registry
+
+
+def last_human_text(messages: list[BaseMessage]) -> str:
+    for message in reversed(messages):
+        if message.type == "human":
+            content = message.content
+            if isinstance(content, str):
+                return content
+    return ""
 
 
 class Lookup:
