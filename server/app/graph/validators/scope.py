@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from typing import Mapping
-
 from app.destinations.registry import get_destination_registry
 from app.graph.state import CONFIDENCE_THRESHOLD, MatchedToken, ScopePhase
-from app.graph.validators.common import connector_to_platform, dedupe, get_lookup
 from app.internal.signal_type import (
     get_active_signal_type_ids,
     get_signal_type,
@@ -12,12 +9,8 @@ from app.internal.signal_type import (
 from app.sources.registry import get_source_registry
 
 
-def sanitize_scope_hints(
-    raw_tokens: list[object],
-    text: str = "",
-) -> tuple[list[MatchedToken], list[str]]:
-    """Validate rich matched_tokens; infer catalog from id; platforms = product_groups."""
-    del text  # kept for call-site compatibility; platforms come from product_group ids only
+def _sanitize_scope_hints(raw_tokens: list[object]) -> list[MatchedToken]:
+    """Validate rich matched_tokens; keep source / product_group / active signal ids only."""
     source_registry = get_source_registry()
     destination_registry = get_destination_registry()
     active_signal_ids = get_active_signal_type_ids()
@@ -68,13 +61,6 @@ def sanitize_scope_hints(
             canonical_id = token_id
             labels = group_labels.get(canonical_id, set())
             display_name = next(iter(labels)) if len(labels) == 1 else canonical_id.title()
-        elif token_id in destination_registry.destination_ids:
-            mapped = connector_to_platform(token_id)
-            if mapped is None or mapped not in product_groups:
-                continue
-            canonical_id = mapped
-            labels = group_labels.get(canonical_id, set())
-            display_name = next(iter(labels)) if len(labels) == 1 else canonical_id.title()
         elif token_id in active_signal_ids:
             signal = signal_by_id.get(token_id)
             if signal is None:
@@ -82,6 +68,8 @@ def sanitize_scope_hints(
             canonical_id = token_id
             display_name = signal.display_name
         else:
+            # Unknown ids and connector ids (e.g. meta_capi) are dropped — scope does not
+            # resolve destinations.
             continue
 
         if canonical_id in seen:
@@ -97,34 +85,14 @@ def sanitize_scope_hints(
             }
         )
 
-    mentioned_platforms = dedupe(
-        [token["id"] for token in matched if token["id"] in product_groups]
-    )
-    return matched, mentioned_platforms
+    return matched
 
 
-def matched_token_ids(scope: ScopePhase | Mapping[str, object] | None) -> list[str]:
-    """Adapter: rich scope tokens → flat id list for intent validators (Step 2 bridge)."""
-    if not scope:
-        return []
-    tokens = scope.get("matched_tokens") or []
-    if not isinstance(tokens, list):
-        return []
-    ids: list[str] = []
-    for token in tokens:
-        if isinstance(token, dict):
-            token_id = token.get("id")
-            if isinstance(token_id, str):
-                ids.append(token_id)
-    return ids
-
-
-def validate_scope_json(raw: dict | None, latest_text: str = "") -> ScopePhase:
+def validate_scope_json(raw: dict | None) -> ScopePhase:
     fallback: ScopePhase = {
         "status": "out_of_scope",
         "reply_kind": "redirect",
         "matched_tokens": [],
-        "mentioned_platforms": [],
     }
     if not isinstance(raw, dict):
         return fallback
@@ -146,15 +114,8 @@ def validate_scope_json(raw: dict | None, latest_text: str = "") -> ScopePhase:
     if not isinstance(raw_tokens, list):
         raw_tokens = []
 
-    matched_tokens, mentioned_platforms = sanitize_scope_hints(raw_tokens, latest_text)
-
     return {
         "status": status,
         "reply_kind": reply_kind,
-        "matched_tokens": matched_tokens,
-        "mentioned_platforms": mentioned_platforms,
+        "matched_tokens": _sanitize_scope_hints(raw_tokens),
     }
-
-
-def normalize_matched_tokens(tokens: list[str]) -> list[str]:
-    return get_lookup().normalize_tokens(tokens)

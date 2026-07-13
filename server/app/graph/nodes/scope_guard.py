@@ -3,7 +3,8 @@ from langchain_core.messages import AIMessage
 from app.graph.handlers import classify_scope, compose_scope_reply
 from app.graph.llm import get_llm
 from app.graph.state import SignalsState
-from app.graph.validators import last_human_text, validate_scope_json
+from app.graph.validators.common import last_human_text
+from app.graph.validators.scope import validate_scope_json
 
 
 async def scope_guard_node(state: SignalsState) -> dict:
@@ -14,7 +15,7 @@ async def scope_guard_node(state: SignalsState) -> dict:
     latest_text = last_human_text(messages)
 
     raw = await classify_scope(llm, latest_text)
-    scope = validate_scope_json(raw, latest_text)
+    scope = validate_scope_json(raw)
     reply_text = await compose_scope_reply(llm, latest_text, scope, user_name)
 
     return {

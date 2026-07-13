@@ -1,4 +1,4 @@
-from app.graph.validators import normalize_matched_tokens, validate_scope_json
+from app.graph.validators.scope import validate_scope_json
 
 
 def _token(
@@ -35,18 +35,16 @@ def test_in_scope_with_valid_tokens() -> None:
                     confidence=0.9,
                 ),
             ],
-        },
-        "connect salesforce to meta",
+        }
     )
     assert scope["status"] == "in_scope"
     assert scope["reply_kind"] == "ack"
     assert len(scope["matched_tokens"]) == 2
     assert scope["matched_tokens"][0]["id"] == "salesforce"
     assert scope["matched_tokens"][1]["id"] == "meta"
-    assert scope["mentioned_platforms"] == ["meta"]
 
 
-def test_channels_connector_id_mapped_to_product_group() -> None:
+def test_connector_ids_dropped() -> None:
     scope = validate_scope_json(
         {
             "status": "in_scope",
@@ -70,17 +68,19 @@ def test_channels_connector_id_mapped_to_product_group() -> None:
                     display_name="Google",
                     confidence=0.88,
                 ),
+                _token(
+                    raw="Meta",
+                    token_id="meta",
+                    display_name="Meta",
+                    confidence=0.9,
+                ),
             ],
-        },
-        "connect salesforce to meta and google",
+        }
     )
     ids = {token["id"] for token in scope["matched_tokens"]}
-    assert "salesforce" in ids
-    assert "meta" in ids
-    assert "google" in ids
+    assert ids == {"salesforce", "meta"}
     assert "meta_capi" not in ids
     assert "google_offline_conversions" not in ids
-    assert set(scope["mentioned_platforms"]) == {"meta", "google"}
 
 
 def test_in_scope_empty_tokens_preserves_in_scope() -> None:
@@ -94,7 +94,6 @@ def test_in_scope_empty_tokens_preserves_in_scope() -> None:
     assert scope["status"] == "in_scope"
     assert scope["reply_kind"] == "ack"
     assert scope["matched_tokens"] == []
-    assert scope["mentioned_platforms"] == []
 
 
 def test_low_confidence_tokens_dropped() -> None:
@@ -120,7 +119,6 @@ def test_low_confidence_tokens_dropped() -> None:
     )
     assert len(scope["matched_tokens"]) == 1
     assert scope["matched_tokens"][0]["id"] == "meta"
-    assert scope["mentioned_platforms"] == ["meta"]
 
 
 def test_unknown_id_dropped() -> None:
@@ -140,7 +138,6 @@ def test_unknown_id_dropped() -> None:
     )
     assert scope["status"] == "in_scope"
     assert scope["matched_tokens"] == []
-    assert scope["mentioned_platforms"] == []
 
 
 def test_unknown_channel_id_dropped() -> None:
@@ -159,7 +156,6 @@ def test_unknown_channel_id_dropped() -> None:
         }
     )
     assert scope["matched_tokens"] == []
-    assert scope["mentioned_platforms"] == []
 
 
 def test_display_name_corrected_from_registry() -> None:
@@ -199,7 +195,6 @@ def test_invalid_json_shape_falls_back() -> None:
         "status": "out_of_scope",
         "reply_kind": "redirect",
         "matched_tokens": [],
-        "mentioned_platforms": [],
     }
 
 
@@ -221,15 +216,3 @@ def test_signal_type_token_kept() -> None:
     assert len(scope["matched_tokens"]) == 1
     assert scope["matched_tokens"][0]["id"] == "offline_conversion"
     assert scope["matched_tokens"][0]["display_name"] == "Offline Conversion"
-
-
-def test_normalize_source_and_destination_aliases() -> None:
-    tokens = normalize_matched_tokens(["Salesforce", "facebook", "offline"])
-    assert "salesforce" in tokens
-    assert "meta_capi" in tokens
-    assert "offline_conversion" in tokens
-
-
-def test_normalize_deduplicates() -> None:
-    tokens = normalize_matched_tokens(["meta", "meta_capi", "facebook"])
-    assert tokens.count("meta_capi") == 1

@@ -9,7 +9,6 @@ from app.graph.validators import (
     parse_clarify_selection,
     recompute_intent,
     resolve_product_groups,
-    sanitize_scope_hints,
     with_derived_destinations,
 )
 
@@ -34,37 +33,6 @@ def test_resolve_google_customer_match_disambiguator() -> None:
         None,
     )
     assert result == ["google_customer_match"]
-
-
-def test_sanitize_scope_maps_connector_channels_to_product_group() -> None:
-    matched, platforms = sanitize_scope_hints(
-        [
-            {
-                "raw": "Salesforce",
-                "id": "salesforce",
-                "display_name": "Salesforce",
-                "confidence": 0.95,
-            },
-            {
-                "raw": "Meta CAPI",
-                "id": "meta_capi",
-                "display_name": "Meta",
-                "confidence": 0.9,
-            },
-            {
-                "raw": "Google Ads",
-                "id": "google_offline_conversions",
-                "display_name": "Google",
-                "confidence": 0.9,
-            },
-        ],
-        "connect salesforce to meta and google",
-    )
-    ids = {token["id"] for token in matched}
-    assert "salesforce" in ids
-    assert "meta" in ids
-    assert "google" in ids
-    assert set(platforms) == {"meta", "google"}
 
 
 def test_build_intent_human_fields_full_still_partial() -> None:

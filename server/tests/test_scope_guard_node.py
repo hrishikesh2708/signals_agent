@@ -40,7 +40,6 @@ async def test_compose_scope_reply_uses_single_human_message_only() -> None:
         "status": "in_scope",
         "reply_kind": "ack",
         "matched_tokens": [],
-        "mentioned_platforms": [],
     }
 
     reply = await compose_scope_reply(llm, "hello setup", scope, "Ada")

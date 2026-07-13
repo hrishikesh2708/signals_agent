@@ -21,7 +21,6 @@ class ScopePhase(TypedDict):
     status: Literal["in_scope", "out_of_scope"]
     reply_kind: Literal["ack", "greeting", "redirect"]
     matched_tokens: list[MatchedToken]
-    mentioned_platforms: list[str]
 
 
 class IntentPhase(TypedDict):
