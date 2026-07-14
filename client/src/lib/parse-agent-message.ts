@@ -47,8 +47,6 @@ export type AgentEventMessage = {
 export type ThinkingMessage = {
   type: "thinking";
   message: string; // "Analyzing your Salesforce schema…"
-  step?: number;
-  total_steps?: number;
 };
 
 export type StepCompleteMessage = {

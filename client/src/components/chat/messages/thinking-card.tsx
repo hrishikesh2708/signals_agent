@@ -18,12 +18,6 @@ export function ThinkingCard({ data }: { data: ThinkingMessage }) {
       <p className="text-sm leading-snug italic text-[var(--muted-foreground)]">
         {data.message}
       </p>
-
-      {data.step !== undefined && data.total_steps !== undefined && (
-        <span className="ml-auto shrink-0 rounded-full border border-[var(--border)] bg-[var(--muted)] px-2 py-0.5 text-[10px] font-medium text-[var(--muted-foreground)]">
-          {data.step}/{data.total_steps}
-        </span>
-      )}
     </div>
   );
 }

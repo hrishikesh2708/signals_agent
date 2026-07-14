@@ -19,9 +19,7 @@ import { IntentClarifyInterruptCard } from "@/components/chat/interrupts/intent-
 import { MappingMatrixInterruptCard } from "@/components/chat/interrupts/mapping-matrix-interrupt-card";
 import { MappingReviewInterruptCard } from "@/components/chat/interrupts/mapping-review-interrupt-card";
 import { ResolveFieldsInterruptCard } from "@/components/chat/interrupts/resolve-fields-interrupt-card";
-import { SelectChannelsInterruptCard } from "@/components/chat/interrupts/select-channels-interrupt-card";
 import { SelectObjectInterruptCard } from "@/components/chat/interrupts/select-object-interrupt-card";
-import { SelectSourceInterruptCard } from "@/components/chat/interrupts/select-source-interrupt-card";
 import { ValidationDryRunInterruptCard } from "@/components/chat/interrupts/validation-dry-run-interrupt-card";
 import { ValidationErrorsInterruptCard } from "@/components/chat/interrupts/validation-errors-interrupt-card";
 
@@ -34,10 +32,6 @@ export function HitlApprovalCard(props: InterruptCardProps) {
   switch (payload.type) {
     case "intent_clarify":
       return <IntentClarifyInterruptCard {...cardProps} />;
-    case "select_channels":
-      return <SelectChannelsInterruptCard {...cardProps} />;
-    case "select_source":
-      return <SelectSourceInterruptCard {...cardProps} />;
     case "connect_source":
       return <ConnectSourceInterruptCard {...cardProps} />;
     case "check_connection":

@@ -12,7 +12,7 @@
  * Agent messages are regular assistant messages containing a JSON string:
  *
  *   // Thinking / in-progress
- *   { "type": "thinking", "message": "Analyzing your Salesforce schema…", "step": 1, "total_steps": 4 }
+ *   { "type": "thinking", "message": "Analyzing your Salesforce schema…" }
  *
  *   // Step confirmed
  *   { "type": "step_complete", "message": "Meta + Google selected as destinations", "detail": "Optional sub-text" }
@@ -78,13 +78,6 @@ const MOCK_USER_MSG =
 
 const MOCK_AGENT_TEXT =
   "Sure! Let me walk you through the setup. I'll check your connections, map your fields, and activate the pipeline once everything looks good.";
-
-const MOCK_THINKING: ThinkingMessage = {
-  type: "thinking",
-  message: "Analyzing your Salesforce Opportunity schema…",
-  step: 2,
-  total_steps: 4,
-};
 
 const MOCK_THINKING_SIMPLE: ThinkingMessage = {
   type: "thinking",
@@ -227,11 +220,6 @@ type Section = { label: string; tag: string; node: React.ReactNode };
 
 const SECTIONS: Section[] = [
   {
-    label: "Thinking (with step counter)",
-    tag: "thinking",
-    node: <ThinkingCard data={MOCK_THINKING} />,
-  },
-  {
     label: "Thinking (simple)",
     tag: "thinking",
     node: <ThinkingCard data={MOCK_THINKING_SIMPLE} />,
@@ -311,7 +299,7 @@ const SECTIONS: Section[] = [
     tag: "dispatcher",
     node: (
       <div className="space-y-4">
-        <AgentMessageBubble content={JSON.stringify(MOCK_THINKING)} />
+        <AgentMessageBubble content={JSON.stringify(MOCK_THINKING_SIMPLE)} />
         <AgentMessageBubble content={JSON.stringify(MOCK_SCHEMA_SUMMARY)} />
         <AgentMessageBubble content={JSON.stringify(MOCK_MAPPING_COMPLETE)} />
       </div>

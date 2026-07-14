@@ -5,7 +5,7 @@
  * ║                                                                         ║
  * ║  Route: /interrupt-dev                                                  ║
  * ║  Top: intent_clarify gallery (source / signal_type / channels).         ║
- * ║  Below: legacy interrupt cards (select_* demoted).                      ║
+ * ║  Below: remaining interrupt card previews.                              ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * Live clarify contract (`build_clarify_payload`):
@@ -84,18 +84,6 @@ const CLARIFY_MOCKS: { label: string; field: string; payload: ApprovalInterruptP
 ];
 
 // ── Legacy mocks (demoted) ─────────────────────────────────────────────────
-
-// ── select_source (legacy) ────────────────────────────────────────────────
-const MOCK_SELECT_SOURCE: ApprovalInterruptPayload = {
-  type: "select_source",
-  default_selected: "salesforce",
-  options: [
-    { id: "salesforce", label: "Salesforce",   enabled: true  },
-    { id: "hubspot",    label: "HubSpot",       enabled: true  },
-    { id: "marketo",    label: "Marketo",       enabled: false },
-    { id: "dynamics",   label: "MS Dynamics",   enabled: false },
-  ],
-};
 
 // ── select_object (legacy) ────────────────────────────────────────────────
 const MOCK_SELECT_OBJECT: ApprovalInterruptPayload = {
@@ -211,22 +199,6 @@ const MOCK_CHECK_CONNECTION_OK: ApprovalInterruptPayload = {
     "Active connection found. The agent will use this to fetch your Salesforce schema.",
 };
 
-// ── select_channels (legacy) ──────────────────────────────────────────────
-const MOCK_SELECT_CHANNELS: ApprovalInterruptPayload = {
-  type: "select_channels",
-  min_select: 1,
-  default_selected: ["meta"],
-  options: [
-    { id: "meta",     label: "Meta",        enabled: true  },
-    { id: "google",   label: "Google",      enabled: true  },
-    { id: "tiktok",   label: "TikTok",      enabled: true  },
-    { id: "snapchat", label: "Snapchat",    enabled: true  },
-    { id: "linkedin", label: "LinkedIn",    enabled: true  },
-    { id: "twitter",  label: "X (Twitter)", enabled: false },
-    { id: "bing",     label: "Bing",        enabled: false },
-  ],
-};
-
 // ── 5. check_channels (3 variants) ───────────────────────────────────────
 // Agent sends a plain chat message first, then fires this interrupt.
 // detail should always be present when connected (shows which account).
@@ -315,8 +287,6 @@ const MOCK_RESOLVE_FIELDS_RESOLVED: ApprovalInterruptPayload = {
 
 
 const LEGACY_STAGES: { label: string; tag: string; payload: ApprovalInterruptPayload }[] = [
-  { label: "Legacy — Select channels",           tag: "select_channels",  payload: MOCK_SELECT_CHANNELS          },
-  { label: "Legacy — Select source CRM",         tag: "select_source",    payload: MOCK_SELECT_SOURCE            },
   { label: "Legacy — Select object",             tag: "select_object",    payload: MOCK_SELECT_OBJECT            },
   { label: "Check connection (not connected)",   tag: "check_connection", payload: MOCK_CHECK_CONNECTION_NONE    },
   { label: "Check connection (expired)",         tag: "check_connection", payload: MOCK_CHECK_CONNECTION_EXPIRED },
@@ -354,7 +324,7 @@ export default function InterruptDevPage() {
           DEV PREVIEW — delete <code className="font-mono">src/app/(app)/interrupt-dev/</code> when your agent emits real interrupts
         </p>
         <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-          Top gallery: live <code className="font-mono">intent_clarify</code> shapes. Legacy select_* cards are demoted below.
+          Top gallery: live <code className="font-mono">intent_clarify</code> shapes. Other interrupt cards below.
         </p>
       </div>
 
@@ -393,9 +363,9 @@ export default function InterruptDevPage() {
         })}
 
         <div className="border-t border-[var(--border)] pt-8 space-y-1">
-          <p className="text-sm font-semibold text-[var(--muted-foreground)]">Legacy interrupts</p>
+          <p className="text-sm font-semibold text-[var(--muted-foreground)]">Other interrupts</p>
           <p className="text-xs text-[var(--muted-foreground)]">
-            select_source / select_channels / select_object are superseded by intent_clarify.
+            select_object remains for preview; source/channels clarifications use intent_clarify above.
           </p>
         </div>
 

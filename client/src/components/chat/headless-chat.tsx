@@ -22,8 +22,6 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 type ConnectStatus = "idle" | "connecting" | "ready" | "error";
 
 const INTERRUPT_STEPS: Record<string, { step: number; total: number; label: string }> = {
-  select_channels: { step: 1, total: 9, label: "Select ad platforms" },
-  select_source: { step: 2, total: 9, label: "Select CRM source" },
   check_connection: { step: 3, total: 9, label: "Check source connection" },
   select_object: { step: 4, total: 9, label: "Select Salesforce object" },
   check_channels: { step: 5, total: 9, label: "Check destination connections" },
@@ -54,12 +52,7 @@ export function HeadlessChat({
   const [draft, setDraft] = useState("");
   const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
 
-  const PICKER_TYPES = new Set([
-    "select_source",
-    "select_object",
-    "select_channels",
-    "intent_clarify",
-  ]);
+  const PICKER_TYPES = new Set(["select_object", "intent_clarify"]);
   type InterruptContext = { afterIndex: number; message?: string; hint?: string };
   const [interruptContexts, setInterruptContexts] = useState<InterruptContext[]>([]);
   const pendingProcessedRef = useRef(false);
@@ -169,17 +162,6 @@ export function HeadlessChat({
         return {
           step: parsed.data.step_index,
           total: parsed.data.step_total,
-          label: parsed.data.message,
-        };
-      }
-      if (
-        parsed.kind === "thinking" &&
-        parsed.data.step !== undefined &&
-        parsed.data.total_steps !== undefined
-      ) {
-        return {
-          step: parsed.data.step,
-          total: parsed.data.total_steps,
           label: parsed.data.message,
         };
       }
