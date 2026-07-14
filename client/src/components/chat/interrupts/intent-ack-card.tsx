@@ -14,7 +14,7 @@ export function IntentAckCard({ data }: { data: IntentAckMessage }) {
   if (chips.length === 0) return null;
 
   return (
-    <div className="max-w-[85%] space-y-2">
+    <div className="w-full space-y-2">
       <p className="text-[10px] font-semibold tracking-widest text-[var(--muted-foreground)] uppercase">
         Detected
       </p>

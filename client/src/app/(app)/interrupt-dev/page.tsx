@@ -4,54 +4,17 @@
  * ║  real `on_interrupt` events via CopilotKit.                             ║
  * ║                                                                         ║
  * ║  Route: /interrupt-dev                                                  ║
- * ║  Shows all 6 interrupt card variants in sequence with mock data         ║
- * ║  so you can iterate on UI without a live agent.                         ║
+ * ║  Top: intent_clarify gallery (source / signal_type / channels).         ║
+ * ║  Below: legacy interrupt cards (select_* demoted).                      ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * BACKEND CONTRACT — what your LangGraph agent should emit for each type:
- *
- * interrupt("on_interrupt", {
- *
- *   // 1 — pick ad platforms (multi-select)
- *   type: "select_channels",
- *   options: [{ id, label, enabled }],   // enabled: false = "coming soon"
- *   min_select?: 1,
- *   default_selected?: string[],          // pre-selected IDs
- *   // → resume: { selected: string[] }
- *
- *   // 2 — pick CRM (single-select)
- *   type: "select_source",
- *   options: [{ id, label, enabled }],   // enabled: false = "coming soon"
- *   default_selected?: string,            // pre-selected ID
- *   // → resume: { selected: string }
- *
- *   // 3 — check source connection (3 variants)
- *   type: "check_connection",
- *   source_label: string,                 // e.g. "Salesforce"
- *   connection_status: "not_connected" | "expired" | "connected",
- *   message: string,                      // status description (stays in payload)
- *   account_detail?: string,              // e.g. "Acme Corp · john@acme.com" — connected only
- *   // → resume: onApprove({ action: "connect" }) | onReject("change_source")
- *
- *   // (remaining interrupts documented below each mock)
- * })
- *
- * Resume response shape (returned via command.resume):
- *   select_channels    → { selected: string[] }
- *   select_source      → { selected: string }
- *   check_connection   → { action: "connect" } | reject("change_source")
- *   select_object      → { selected: string }
- *   check_channels     → { action: "confirm_all" | "connect" | "skip", platform_id?: string }
- *   mapping_review     → { approved: true, rows: [...] } | { approved: false }
- *   canonical_mapping  → { approved: true } | { approved: true, skip_hints: true }
- *   resolve_fields     → { action: "submit", resolutions: [{ field, action: "set_constant"|"map_field", value?|source_field? }] }
- *                       // agent re-fires if more unresolved fields remain
- *                    OR { action: "confirm" } (resolved state → agent received confirm)
- *   activate_confirm   → { action: "activate" } | reject("review_matrix")
- *   confirm_run        → { approved: true, reason?: "..." }
- *                     OR { approved: false, reason?: "..." }
- *   generic            → { approved: true, reason?: "..." }
- *                     OR { approved: false, reason?: "..." }
+ * Live clarify contract (`build_clarify_payload`):
+ *   type: "intent_clarify"
+ *   field: "source" | "signal_type" | "channels"
+ *   title, subtitle, required, multi
+ *   options: [{ id, label, enabled, description? }]
+ *   context, attempt, max_attempts
+ *   → resume: { selected: "<id>" } | { selected: ["id", ...] }
  */
 
 "use client";
@@ -61,14 +24,68 @@ import { HitlApprovalCard } from "@/components/chat/interrupts/hitl-approval-car
 import type { ApprovalInterruptPayload } from "@/lib/interrupt-types";
 import { loadStoredSessionId } from "@/lib/session-storage";
 
-// ── Mock payloads (one per interrupt type) ─────────────────────────────────
+// ── intent_clarify mocks (BE-shaped) ───────────────────────────────────────
 
-// ── 2. select_source ──────────────────────────────────────────────────────
-// Agent sends a plain chat message first, then fires this interrupt.
-// No title/message/hint in payload — those belong in the chat thread.
-//
-// Inbound:  { type, options, default_selected? }
-// Outbound: { selected: string }   e.g. "salesforce"
+const MOCK_CLARIFY_SOURCE: ApprovalInterruptPayload = {
+  type: "intent_clarify",
+  field: "source",
+  title: "Select a data source",
+  subtitle: "Choose which CRM or data source to connect.",
+  required: true,
+  multi: false,
+  options: [
+    { id: "salesforce", label: "Salesforce", enabled: true },
+    { id: "hubspot", label: "HubSpot", enabled: true },
+    { id: "zoho", label: "Zoho CRM", enabled: true },
+  ],
+  context: { source: null, signal_type: null, channels: [] },
+  attempt: 1,
+  max_attempts: 3,
+};
+
+const MOCK_CLARIFY_SIGNAL_TYPE: ApprovalInterruptPayload = {
+  type: "intent_clarify",
+  field: "signal_type",
+  title: "Confirm the signal type",
+  subtitle: "v1 supports offline conversions — confirm before choosing destinations.",
+  required: true,
+  multi: false,
+  options: [
+    { id: "offline_conversion", label: "Offline Conversion", enabled: true },
+    { id: "web_conversion", label: "Web Conversion", enabled: false, description: "Not available" },
+    { id: "lead_conversion", label: "Lead Conversion", enabled: false, description: "Not available" },
+    { id: "audience", label: "Audience", enabled: true },
+  ],
+  context: { source: "salesforce", signal_type: null, channels: [] },
+  attempt: 1,
+  max_attempts: 3,
+};
+
+const MOCK_CLARIFY_CHANNELS: ApprovalInterruptPayload = {
+  type: "intent_clarify",
+  field: "channels",
+  title: "Select ad destinations",
+  subtitle: "Choose which ad platforms should receive this data.",
+  required: true,
+  multi: true,
+  options: [
+    { id: "meta", label: "Meta", enabled: true },
+    { id: "google", label: "Google", enabled: true },
+  ],
+  context: { source: "salesforce", signal_type: "offline_conversion", channels: [] },
+  attempt: 1,
+  max_attempts: 3,
+};
+
+const CLARIFY_MOCKS: { label: string; field: string; payload: ApprovalInterruptPayload }[] = [
+  { label: "Source", field: "source", payload: MOCK_CLARIFY_SOURCE },
+  { label: "Signal type", field: "signal_type", payload: MOCK_CLARIFY_SIGNAL_TYPE },
+  { label: "Channels", field: "channels", payload: MOCK_CLARIFY_CHANNELS },
+];
+
+// ── Legacy mocks (demoted) ─────────────────────────────────────────────────
+
+// ── select_source (legacy) ────────────────────────────────────────────────
 const MOCK_SELECT_SOURCE: ApprovalInterruptPayload = {
   type: "select_source",
   default_selected: "salesforce",
@@ -80,13 +97,7 @@ const MOCK_SELECT_SOURCE: ApprovalInterruptPayload = {
   ],
 };
 
-// ── 4. select_object ──────────────────────────────────────────────────────
-// Agent sends a plain chat message first, then fires this interrupt.
-// requested = agent's detected object from user's message — highlighted as
-// "suggested" and moved first. Omit if agent cannot infer.
-//
-// Inbound:  { type, options: string[], requested?: string }
-// Outbound: { selected: string }   e.g. "Opportunity"
+// ── select_object (legacy) ────────────────────────────────────────────────
 const MOCK_SELECT_OBJECT: ApprovalInterruptPayload = {
   type: "select_object",
   requested: "opportunity",
@@ -200,24 +211,19 @@ const MOCK_CHECK_CONNECTION_OK: ApprovalInterruptPayload = {
     "Active connection found. The agent will use this to fetch your Salesforce schema.",
 };
 
-// ── 1. select_channels ────────────────────────────────────────────────────
-// Agent sends a plain chat message first, then fires this interrupt.
-// No title/message in payload — those belong in the chat thread.
-//
-// Inbound:  { type, options, min_select, default_selected? }
-// Outbound: { selected: string[] }   e.g. ["meta", "google"]
+// ── select_channels (legacy) ──────────────────────────────────────────────
 const MOCK_SELECT_CHANNELS: ApprovalInterruptPayload = {
   type: "select_channels",
   min_select: 1,
-  default_selected: ["meta"],          // pre-select Meta; agent can pass [] for none
+  default_selected: ["meta"],
   options: [
     { id: "meta",     label: "Meta",        enabled: true  },
     { id: "google",   label: "Google",      enabled: true  },
     { id: "tiktok",   label: "TikTok",      enabled: true  },
     { id: "snapchat", label: "Snapchat",    enabled: true  },
     { id: "linkedin", label: "LinkedIn",    enabled: true  },
-    { id: "twitter",  label: "X (Twitter)", enabled: false }, // coming soon
-    { id: "bing",     label: "Bing",        enabled: false }, // coming soon
+    { id: "twitter",  label: "X (Twitter)", enabled: false },
+    { id: "bing",     label: "Bing",        enabled: false },
   ],
 };
 
@@ -308,75 +314,111 @@ const MOCK_RESOLVE_FIELDS_RESOLVED: ApprovalInterruptPayload = {
 };
 
 
-const STAGES: { label: string; tag: string; payload: ApprovalInterruptPayload }[] = [
-  // ── Agreed interrupt sequence ────────────────────────────────────────────
-  { label: "1 — Select channels",                tag: "select_channels",  payload: MOCK_SELECT_CHANNELS          },
-  { label: "2 — Select source CRM",              tag: "select_source",    payload: MOCK_SELECT_SOURCE            },
-  { label: "3 — Check connection (not connected)",tag: "check_connection", payload: MOCK_CHECK_CONNECTION_NONE    },
-  { label: "3 — Check connection (expired)",      tag: "check_connection", payload: MOCK_CHECK_CONNECTION_EXPIRED },
-  { label: "3 — Check connection (connected)",    tag: "check_connection", payload: MOCK_CHECK_CONNECTION_OK      },
-  { label: "4 — Select object",                  tag: "select_object",    payload: MOCK_SELECT_OBJECT            },
-  { label: "5 — Check channels (mixed)",          tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_MIXED         },
-  { label: "5 — Check channels (with expired)",   tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_EXPIRED       },
-  { label: "5 — Check channels (all connected)",  tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_ALL_CONNECTED },
-  { label: "6 — Mapping review (single dest)",    tag: "mapping_review",   payload: MOCK_MAPPING_REVIEW_SINGLE   },
-  { label: "6 — Mapping review (multi dest)",     tag: "mapping_review",   payload: MOCK_MAPPING_REVIEW_MULTI    },
-  { label: "7 — Canonical mapping",               tag: "canonical_mapping",payload: MOCK_CANONICAL_MAPPING       },
-  { label: "8 — Resolve fields (has issues)",     tag: "resolve_fields",   payload: MOCK_RESOLVE_FIELDS_ISSUES   },
-  { label: "8 — Resolve fields (resolved)",       tag: "resolve_fields",   payload: MOCK_RESOLVE_FIELDS_RESOLVED },
-  { label: "9 — Activate confirm",                tag: "activate_confirm", payload: MOCK_ACTIVATE_CONFIRM        },
+const LEGACY_STAGES: { label: string; tag: string; payload: ApprovalInterruptPayload }[] = [
+  { label: "Legacy — Select channels",           tag: "select_channels",  payload: MOCK_SELECT_CHANNELS          },
+  { label: "Legacy — Select source CRM",         tag: "select_source",    payload: MOCK_SELECT_SOURCE            },
+  { label: "Legacy — Select object",             tag: "select_object",    payload: MOCK_SELECT_OBJECT            },
+  { label: "Check connection (not connected)",   tag: "check_connection", payload: MOCK_CHECK_CONNECTION_NONE    },
+  { label: "Check connection (expired)",         tag: "check_connection", payload: MOCK_CHECK_CONNECTION_EXPIRED },
+  { label: "Check connection (connected)",       tag: "check_connection", payload: MOCK_CHECK_CONNECTION_OK      },
+  { label: "Check channels (mixed)",             tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_MIXED         },
+  { label: "Check channels (with expired)",      tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_EXPIRED       },
+  { label: "Check channels (all connected)",     tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_ALL_CONNECTED },
+  { label: "Mapping review (single dest)",       tag: "mapping_review",   payload: MOCK_MAPPING_REVIEW_SINGLE   },
+  { label: "Mapping review (multi dest)",        tag: "mapping_review",   payload: MOCK_MAPPING_REVIEW_MULTI    },
+  { label: "Canonical mapping",                  tag: "canonical_mapping",payload: MOCK_CANONICAL_MAPPING       },
+  { label: "Resolve fields (has issues)",        tag: "resolve_fields",   payload: MOCK_RESOLVE_FIELDS_ISSUES   },
+  { label: "Resolve fields (resolved)",          tag: "resolve_fields",   payload: MOCK_RESOLVE_FIELDS_RESOLVED },
+  { label: "Activate confirm",                   tag: "activate_confirm", payload: MOCK_ACTIVATE_CONFIRM        },
 ];
 
 // ── Preview page ───────────────────────────────────────────────────────────
 
 export default function InterruptDevPage() {
-  const [responses, setResponses] = useState<Record<number, unknown>>({});
+  const [responses, setResponses] = useState<Record<string, unknown>>({});
 
-  function handleApprove(index: number, response: unknown) {
-    setResponses((prev) => ({ ...prev, [index]: { action: "approved", response } }));
+  function handleApprove(key: string, response: unknown) {
+    setResponses((prev) => ({ ...prev, [key]: { action: "approved", response } }));
   }
 
-  function handleReject(index: number, reason?: string) {
-    setResponses((prev) => ({ ...prev, [index]: { action: "rejected", reason } }));
+  function handleReject(key: string, reason?: string) {
+    setResponses((prev) => ({ ...prev, [key]: { action: "rejected", reason } }));
   }
+
+  const sessionId = loadStoredSessionId() ?? "dev-preview-session";
 
   return (
     <div className="h-full overflow-y-auto bg-[var(--background)] px-6 py-8">
-      {/* Banner */}
       <div className="mx-auto mb-8 max-w-2xl rounded-lg border border-dashed border-red-400/60 bg-red-500/5 px-4 py-3">
         <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-          🗑️ DEV PREVIEW — delete <code className="font-mono">src/app/(app)/interrupt-dev/</code> when your agent emits real interrupts
+          DEV PREVIEW — delete <code className="font-mono">src/app/(app)/interrupt-dev/</code> when your agent emits real interrupts
         </p>
         <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-          Each card below shows a different interrupt type with mock data. The backend contract is documented in the page file.
+          Top gallery: live <code className="font-mono">intent_clarify</code> shapes. Legacy select_* cards are demoted below.
         </p>
       </div>
 
       <div className="mx-auto max-w-2xl space-y-10">
-        {STAGES.map((stage, index) => {
-          const result = responses[index];
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-[var(--foreground)]">intent_clarify</p>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            source → signal_type → channels · resume {"{ selected }"}
+          </p>
+        </div>
+
+        {CLARIFY_MOCKS.map((mock) => {
+          const key = `clarify-${mock.field}`;
+          const result = responses[key];
           return (
-            <section key={stage.tag}>
-              {/* Stage header */}
+            <section key={key}>
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-[var(--foreground)]">{mock.label}</p>
+                <code className="text-xs text-[var(--muted-foreground)]">
+                  type: &quot;intent_clarify&quot; · field: &quot;{mock.field}&quot;
+                </code>
+              </div>
+              <HitlApprovalCard
+                payload={mock.payload}
+                sessionId={sessionId}
+                onApprove={(response) => handleApprove(key, response)}
+                onReject={(reason) => handleReject(key, reason)}
+              />
+              {result ? (
+                <pre className="mt-2 rounded-md border border-[var(--border)] bg-[var(--secondary)] p-3 text-xs text-[var(--foreground)] overflow-x-auto">
+                  {JSON.stringify(result, null, 2)}
+                </pre>
+              ) : null}
+            </section>
+          );
+        })}
+
+        <div className="border-t border-[var(--border)] pt-8 space-y-1">
+          <p className="text-sm font-semibold text-[var(--muted-foreground)]">Legacy interrupts</p>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            select_source / select_channels / select_object are superseded by intent_clarify.
+          </p>
+        </div>
+
+        {LEGACY_STAGES.map((stage, index) => {
+          const key = `legacy-${index}-${stage.tag}`;
+          const result = responses[key];
+          return (
+            <section key={key} className="opacity-70">
               <div className="mb-3 flex items-center gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--secondary)] text-xs font-bold text-[var(--foreground)]">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--secondary)] text-xs font-bold text-[var(--muted-foreground)]">
                   {index + 1}
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">{stage.label}</p>
+                  <p className="text-sm font-semibold text-[var(--muted-foreground)]">{stage.label}</p>
                   <code className="text-xs text-[var(--muted-foreground)]">type: &quot;{stage.tag}&quot;</code>
                 </div>
               </div>
-
-              {/* Card */}
               <HitlApprovalCard
                 payload={stage.payload}
-                sessionId={loadStoredSessionId() ?? "dev-preview-session"}
-                onApprove={(response) => handleApprove(index, response)}
-                onReject={(reason) => handleReject(index, reason)}
+                sessionId={sessionId}
+                onApprove={(response) => handleApprove(key, response)}
+                onReject={(reason) => handleReject(key, reason)}
               />
-
-              {/* Response echo */}
               {result ? (
                 <pre className="mt-2 rounded-md border border-[var(--border)] bg-[var(--secondary)] p-3 text-xs text-[var(--foreground)] overflow-x-auto">
                   {JSON.stringify(result, null, 2)}

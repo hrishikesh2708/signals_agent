@@ -5,6 +5,9 @@ export type SelectOption = {
   description?: string;
 };
 
+/** Clarify interrupt field — mirrors backend IntentOpenQuestion. */
+export type IntentClarifyField = "source" | "signal_type" | "channels";
+
 export type MappingDestination = {
   id: string;
   label: string;
@@ -50,6 +53,8 @@ export type CanonicalMappingRow = {
 export type ApprovalInterruptPayload = {
   type?: string;
   phase?: string;
+  /** Clarify field for `intent_clarify` interrupts */
+  field?: IntentClarifyField;
   default_selected?: string | string[];
   proposal?: string;
   source_object?: string;
@@ -57,9 +62,17 @@ export type ApprovalInterruptPayload = {
   requested?: string;
   min_select?: number;
   max_select?: number;
+  /** Multi-select picker (e.g. channels clarify) */
+  multi?: boolean;
   title?: string;
+  /** Supporting copy under title (intent_clarify) */
+  subtitle?: string;
   message?: string;
   hint?: string;
+  required?: boolean;
+  context?: Record<string, unknown>;
+  attempt?: number;
+  max_attempts?: number;
   recommended?: string;
   confidence?: string;
   source_label?: string;

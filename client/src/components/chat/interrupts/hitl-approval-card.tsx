@@ -15,6 +15,7 @@ import { FunnelPromptInterruptCard } from "@/components/chat/interrupts/funnel-p
 import { FunnelStagesInterruptCard } from "@/components/chat/interrupts/funnel-stages-interrupt-card";
 import { GoogleAdsAccountInterruptCard } from "@/components/chat/interrupts/google-ads-account-interrupt-card";
 import { GoogleConversionActionInterruptCard } from "@/components/chat/interrupts/google-conversion-action-interrupt-card";
+import { IntentClarifyInterruptCard } from "@/components/chat/interrupts/intent-clarify-interrupt-card";
 import { MappingMatrixInterruptCard } from "@/components/chat/interrupts/mapping-matrix-interrupt-card";
 import { MappingReviewInterruptCard } from "@/components/chat/interrupts/mapping-review-interrupt-card";
 import { ResolveFieldsInterruptCard } from "@/components/chat/interrupts/resolve-fields-interrupt-card";
@@ -31,6 +32,8 @@ export function HitlApprovalCard(props: InterruptCardProps) {
   const cardProps = { ...props, payload };
 
   switch (payload.type) {
+    case "intent_clarify":
+      return <IntentClarifyInterruptCard {...cardProps} />;
     case "select_channels":
       return <SelectChannelsInterruptCard {...cardProps} />;
     case "select_source":

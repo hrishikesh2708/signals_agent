@@ -89,10 +89,13 @@ export function AgentMessageBubble({
       };
       return (
         <div className="max-w-[85%] space-y-3">
-          <AgentTextBubble>
+          <AgentTextBubble className="max-w-none">
             <p className="whitespace-pre-wrap">{d.message}</p>
           </AgentTextBubble>
-          <IntentAckCard data={ackData} />
+          <div className="flex items-start gap-3">
+            <div className="h-7 w-7 shrink-0" aria-hidden />
+            <IntentAckCard data={ackData} />
+          </div>
         </div>
       );
     }

@@ -51,7 +51,12 @@ export function HeadlessChat({
   const [optimisticUserMsg, setOptimisticUserMsg] = useState<string | null>(null);
   const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
 
-  const PICKER_TYPES = new Set(["select_source", "select_object", "select_channels"]);
+  const PICKER_TYPES = new Set([
+    "select_source",
+    "select_object",
+    "select_channels",
+    "intent_clarify",
+  ]);
   type InterruptContext = { afterIndex: number; message?: string; hint?: string };
   const [interruptContexts, setInterruptContexts] = useState<InterruptContext[]>([]);
   const pendingProcessedRef = useRef(false);
