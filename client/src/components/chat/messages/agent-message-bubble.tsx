@@ -1,6 +1,7 @@
 "use client";
 
 import { AgentEventLine } from "./agent-event-line";
+import { AgentRow } from "./agent-row";
 import { AgentTextBubble } from "./agent-text-bubble";
 import { ErrorCard } from "./error-card";
 import { IntentAckCard } from "../interrupts/intent-ack-card";
@@ -92,10 +93,9 @@ export function AgentMessageBubble({
           <AgentTextBubble className="max-w-none">
             <p className="whitespace-pre-wrap">{d.message}</p>
           </AgentTextBubble>
-          <div className="flex items-start gap-3">
-            <div className="h-7 w-7 shrink-0" aria-hidden />
+          <AgentRow leading={null} bodyClassName="px-5">
             <IntentAckCard data={ackData} />
-          </div>
+          </AgentRow>
         </div>
       );
     }

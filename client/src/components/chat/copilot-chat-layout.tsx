@@ -1,9 +1,17 @@
 "use client";
 
+import { useCallback, useLayoutEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { DatahashLogoMark } from "@/components/ui/datahash-logo-mark";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+
+const NEAR_BOTTOM_PX = 80;
+
+export type ChatScrollApi = {
+  /** Scroll to bottom if the user is already near the bottom (or force). */
+  stickToBottom: (force?: boolean) => void;
+};
 
 export function CopilotChatLayout({
   children,
@@ -17,6 +25,7 @@ export function CopilotChatLayout({
   banner,
   footerExtra,
   stepInfo,
+  scrollApiRef,
 }: {
   children?: React.ReactNode;
   draft?: string;
@@ -29,7 +38,39 @@ export function CopilotChatLayout({
   banner?: React.ReactNode;
   footerExtra?: React.ReactNode;
   stepInfo?: { step: number; total: number; label: string } | null;
+  scrollApiRef?: React.MutableRefObject<ChatScrollApi | null>;
 }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const pinnedToBottomRef = useRef(true);
+
+  const stickToBottom = useCallback((force = false) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    if (!force && !pinnedToBottomRef.current) return;
+
+    pinnedToBottomRef.current = true;
+    requestAnimationFrame(() => {
+      const node = scrollerRef.current;
+      if (!node) return;
+      node.scrollTop = node.scrollHeight;
+    });
+  }, []);
+
+  const onScrollerScroll = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    pinnedToBottomRef.current = distance <= NEAR_BOTTOM_PX;
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!scrollApiRef) return;
+    scrollApiRef.current = { stickToBottom };
+    return () => {
+      scrollApiRef.current = null;
+    };
+  }, [scrollApiRef, stickToBottom]);
+
   const stepSubtitle = stepInfo
     ? `Step ${stepInfo.step} of ${stepInfo.total} · ${stepInfo.label}`
     : "Ready to set up your pipeline";
@@ -76,7 +117,11 @@ export function CopilotChatLayout({
         </div>
       ) : null}
 
-      <div className="flex-1 overflow-y-auto">
+      <div
+        ref={scrollerRef}
+        className="flex-1 overflow-y-auto"
+        onScroll={onScrollerScroll}
+      >
         <div className="mx-auto w-full max-w-4xl space-y-4 px-6 py-4">
           {children ?? (
             <p className="text-sm text-[var(--muted-foreground)]">

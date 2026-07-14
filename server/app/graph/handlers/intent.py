@@ -19,7 +19,7 @@ from app.graph.prompts import (
     intent_fallback_give_up,
     intent_fallback_summary,
 )
-from app.graph.state import INTENT_MAX_ATTEMPTS, IntentPhase
+from app.graph.state import INTENT_MAX_ATTEMPTS, IntentOpenQuestion, IntentPhase
 from app.internal.signal_type import get_active_signal_type_id, get_signal_type
 from app.sources import get_source_registry
 
@@ -118,6 +118,52 @@ def format_intent_summary_message(intent: IntentPhase, summary_text: str) -> str
         },
     }
     return json.dumps(payload)
+
+
+def format_intent_clarify_ack(
+    field: IntentOpenQuestion | None,
+    intent: IntentPhase,
+) -> str | None:
+    """Build step_complete JSON after a successful clarify HITL selection."""
+    if field is None:
+        return None
+
+    if field == "source":
+        source_id = intent.get("source")
+        if not source_id:
+            return None
+        entry = get_source_registry().get_source(source_id)
+        label = entry.display_name if entry else source_id
+        message = f"{label} selected as data source"
+    elif field == "signal_type":
+        signal_id = intent.get("signal_type")
+        if not signal_id:
+            return None
+        signal_entry = next(
+            (signal for signal in get_signal_type().signal_types if signal.id == signal_id),
+            None,
+        )
+        label = signal_entry.display_name if signal_entry else signal_id
+        message = f"{label} selected as signal type"
+    elif field == "channels":
+        channels = intent.get("channels") or []
+        if not channels:
+            return None
+        destination_registry = get_destination_registry()
+        group_labels: dict[str, str] = {}
+        for entry in destination_registry.list_destinations():
+            if entry.product_group and entry.product_group not in group_labels:
+                group_labels[entry.product_group] = entry.short_label
+        labels = [group_labels.get(group, group) for group in channels]
+        if len(labels) == 1:
+            message = f"{labels[0]} selected as destination"
+        else:
+            message = f"{' + '.join(labels)} selected as destinations"
+    else:
+        exhaustive: IntentOpenQuestion = field
+        raise ValueError(f"unsupported clarify field: {exhaustive}")
+
+    return json.dumps({"type": "step_complete", "message": message})
 
 
 async def compose_intent_clarify_message(

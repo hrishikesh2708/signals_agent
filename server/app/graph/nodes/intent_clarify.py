@@ -5,6 +5,7 @@ from app.graph.handlers import (
     compose_intent_clarify_message,
     compose_intent_give_up_message,
     compose_intent_summary,
+    format_intent_clarify_ack,
     format_intent_summary_message,
 )
 from app.graph.llm import get_llm
@@ -27,6 +28,15 @@ async def _complete_with_summary(
     summary_text = await compose_intent_summary(llm, completed, user_name)
     content = format_intent_summary_message(completed, summary_text)
     return {"intent": completed, "messages": [AIMessage(content=content)]}
+
+
+def _with_ack(ack: str | None, messages: list[AIMessage] | None = None) -> list[AIMessage]:
+    out: list[AIMessage] = []
+    if ack:
+        out.append(AIMessage(content=ack))
+    if messages:
+        out.extend(messages)
+    return out
 
 
 async def intent_clarify_node(state: SignalsState) -> dict:
@@ -56,12 +66,18 @@ async def intent_clarify_node(state: SignalsState) -> dict:
         }
 
     # Visit B: static picker interrupt → thin merge on resume.
+    field = intent.get("open_question")
     selection = interrupt(build_clarify_payload(intent))
     merged = merge_intent_selection(selection, intent)
+    ack = format_intent_clarify_ack(field, merged)
 
     if merged.get("open_question") is None:
         merged["attempt"] = intent["attempt"]
-        return await _complete_with_summary(merged, state.get("user_name"))
+        result = await _complete_with_summary(merged, state.get("user_name"))
+        return {
+            "intent": result["intent"],
+            "messages": _with_ack(ack, result.get("messages")),
+        }
 
     next_attempt = intent.get("attempt", 1) + 1
     merged["attempt"] = next_attempt
@@ -69,7 +85,12 @@ async def intent_clarify_node(state: SignalsState) -> dict:
     if next_attempt > INTENT_MAX_ATTEMPTS:
         text = await compose_intent_give_up_message(llm, state.get("user_name"))
         merged["status"] = "partial"
-        return {"intent": merged, "messages": [AIMessage(content=text)]}
+        return {
+            "intent": merged,
+            "messages": _with_ack(ack, [AIMessage(content=text)]),
+        }
 
     # Next self-loop visit asks again (hitl_prompted already False from merge).
+    if ack:
+        return {"intent": merged, "messages": [AIMessage(content=ack)]}
     return {"intent": merged}

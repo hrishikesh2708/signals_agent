@@ -7,7 +7,10 @@ import { ChatErrorBoundary } from "./chat-error-boundary";
 import { HitlApprovalCard } from "./interrupts/hitl-approval-card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { CopilotChatLayout } from "./copilot-chat-layout";
+import {
+  CopilotChatLayout,
+  type ChatScrollApi,
+} from "./copilot-chat-layout";
 import { useHeadlessInterrupt } from "@/hooks/use-headless-interrupt";
 import { CHAT_AGENT_ID } from "@/lib/chat-constants";
 import { extractMessageText, parseAgentMessage } from "@/lib/parse-agent-message";
@@ -46,9 +49,9 @@ export function HeadlessChat({
   const { copilotkit } = useCopilotKit();
   const { agent } = useAgent({ agentId: CHAT_AGENT_ID });
   const lastConnectedAgentRef = useRef<typeof agent | null>(null);
+  const scrollApiRef = useRef<ChatScrollApi | null>(null);
   const { pending, resolve } = useHeadlessInterrupt();
   const [draft, setDraft] = useState("");
-  const [optimisticUserMsg, setOptimisticUserMsg] = useState<string | null>(null);
   const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
 
   const PICKER_TYPES = new Set([
@@ -89,6 +92,11 @@ export function HeadlessChat({
     originalIndex: number;
     mergedContent?: string;
   };
+
+  // addMessage mutates agent.messages in place (same array ref); depend on
+  // length + last id so the list recomputes as soon as a typed turn lands —
+  // otherwise Thinking (live last role) paints before the user bubble.
+  const messagesVersion = `${agent.messages.length}:${agent.messages.at(-1)?.id ?? ""}`;
 
   const displayMessages = useMemo<DisplayMessage[]>(() => {
     const result: DisplayMessage[] = [];
@@ -141,8 +149,7 @@ export function HeadlessChat({
       i++;
     }
     return result;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agent.messages]);
+  }, [agent.messages, messagesVersion]);
 
   const stepInfo = useMemo(() => {
     if (pending?.value?.type) {
@@ -183,6 +190,7 @@ export function HeadlessChat({
 
   useEffect(() => {
     setConnectStatus("idle");
+    lastConnectedAgentRef.current = null;
   }, [sessionId]);
 
   useEffect(() => {
@@ -195,6 +203,10 @@ export function HeadlessChat({
     ) {
       return;
     }
+
+    // Headless useAgent relies on chat-config threadId; pin explicitly too
+    // so runAgent persists under this session (CopilotKit headless guidance).
+    agent.threadId = sessionId;
 
     let detached = false;
     lastConnectedAgentRef.current = agent;
@@ -230,49 +242,61 @@ export function HeadlessChat({
   const isConnecting =
     connectStatus === "idle" || connectStatus === "connecting";
 
+  // Match CopilotKit built-in Messages.tsx: show in-progress only when the
+  // latest transcript entry is user/tool so Thinking never races ahead of the bubble.
+  const lastMessageRole =
+    agent.messages.length > 0
+      ? agent.messages[agent.messages.length - 1]?.role
+      : undefined;
+  const showThinkingForTurn =
+    lastMessageRole === "user" || lastMessageRole === "tool";
+
   const activityMessage = isConnecting
     ? "Loading agent…"
     : connectStatus === "ready" && agent.isRunning
       ? pending
         ? "Applying your selection…"
-        : "Agent is thinking…"
+        : showThinkingForTurn
+          ? "Agent is thinking…"
+          : null
       : null;
 
   const inputBusy = !!pending || agent.isRunning || connectStatus !== "ready";
 
   useEffect(() => {
-    if (!optimisticUserMsg) return;
-    const arrived = agent.messages.some(
-      (m) => m.role === "user" && extractMessageText(m.content) === optimisticUserMsg,
-    );
-    if (arrived) setOptimisticUserMsg(null);
-  }, [agent.messages, optimisticUserMsg]);
+    scrollApiRef.current?.stickToBottom();
+  }, [agent.messages, activityMessage, pending]);
 
+  // CopilotKit canonical send: addMessage owns the transcript; runAgent streams.
   const sendMessage = useCallback(
     (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || pending) return;
+      if (!trimmed || agent.isRunning || pending) return;
 
-      setOptimisticUserMsg(trimmed);
+      agent.threadId = sessionId;
       agent.addMessage({
-        role: "user",
         id: crypto.randomUUID(),
+        role: "user",
         content: trimmed,
       });
-      void copilotkit.runAgent({ agent });
       setDraft("");
+      scrollApiRef.current?.stickToBottom(true);
+      void copilotkit.runAgent({ agent }).catch((error) => {
+        console.error("HeadlessChat: runAgent failed", error);
+      });
     },
-    [agent, copilotkit, pending],
+    [agent, copilotkit, pending, sessionId],
   );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendMessage(draft);
+    void sendMessage(draft);
   };
 
   return (
     <CopilotChatLayout
       projectName={projectName}
+      scrollApiRef={scrollApiRef}
       headerActions={
         onNewChat || onSwitchProject ? (
           <div className="flex items-center gap-2">
@@ -382,14 +406,6 @@ export function HeadlessChat({
             </Fragment>
           );
         })}
-
-        {optimisticUserMsg && (
-          <div className="flex justify-end">
-            <div className="max-w-[85%] rounded-2xl bg-[var(--muted)] px-5 py-4 text-sm text-[var(--foreground)]">
-              <p className="whitespace-pre-wrap">{optimisticUserMsg}</p>
-            </div>
-          </div>
-        )}
 
         {activityMessage && (
           <ThinkingCard
