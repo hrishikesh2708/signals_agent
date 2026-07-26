@@ -278,40 +278,27 @@ export function HeadlessChat({
   return (
     <CopilotChatLayout
       projectName={projectName}
+      onSwitchProject={onSwitchProject}
+      projectSwitchDisabled={newChatLoading || inputBusy}
       scrollApiRef={scrollApiRef}
       headerActions={
-        onNewChat || onSwitchProject ? (
-          <div className="flex items-center gap-2">
-            {onSwitchProject ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onSwitchProject}
-                disabled={newChatLoading || inputBusy}
-              >
-                Switch project
-              </Button>
-            ) : null}
-            {onNewChat ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onNewChat}
-                disabled={newChatLoading || inputBusy}
-              >
-                {newChatLoading ? (
-                  <span className="flex items-center gap-2">
-                    <Spinner size="sm" />
-                    New chat
-                  </span>
-                ) : (
-                  "New chat"
-                )}
-              </Button>
-            ) : null}
-          </div>
+        onNewChat ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onNewChat}
+            disabled={newChatLoading || inputBusy}
+          >
+            {newChatLoading ? (
+              <span className="flex items-center gap-2">
+                <Spinner size="sm" />
+                New chat
+              </span>
+            ) : (
+              "New chat"
+            )}
+          </Button>
         ) : null
       }
       draft={draft}

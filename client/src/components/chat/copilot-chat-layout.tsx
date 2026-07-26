@@ -13,6 +13,71 @@ export type ChatScrollApi = {
   stickToBottom: (force?: boolean) => void;
 };
 
+function ProjectChip({
+  projectName,
+  onSwitchProject,
+  disabled = false,
+}: {
+  projectName: string;
+  onSwitchProject?: () => void;
+  disabled?: boolean;
+}) {
+  const body = (
+    <>
+      <span className="text-xs leading-none text-[var(--muted-foreground)]">
+        Project
+      </span>
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span
+          className="max-w-[10rem] truncate text-sm font-medium text-[var(--foreground)] sm:max-w-[14rem]"
+          title={projectName}
+        >
+          {projectName}
+        </span>
+        {onSwitchProject ? (
+          <svg
+            aria-hidden
+            viewBox="0 0 12 12"
+            className="h-3 w-3 shrink-0 text-[var(--muted-foreground)]"
+          >
+            <path
+              d="M2.5 4.5 6 8l3.5-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        ) : null}
+      </span>
+    </>
+  );
+
+  const chipClass = cn(
+    "flex min-w-0 flex-col items-start gap-1 rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-left",
+    onSwitchProject &&
+      "transition-colors hover:bg-[var(--secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+    onSwitchProject && disabled && "pointer-events-none opacity-50",
+  );
+
+  if (onSwitchProject) {
+    return (
+      <button
+        type="button"
+        className={chipClass}
+        onClick={onSwitchProject}
+        disabled={disabled}
+        aria-label={`Switch project (current: ${projectName})`}
+      >
+        {body}
+      </button>
+    );
+  }
+
+  return <div className={chipClass}>{body}</div>;
+}
+
 export function CopilotChatLayout({
   children,
   draft = "",
@@ -21,6 +86,8 @@ export function CopilotChatLayout({
   inputDisabled = false,
   inputPlaceholder = "Message Signals Copilot…",
   projectName,
+  onSwitchProject,
+  projectSwitchDisabled = false,
   headerActions,
   banner,
   footerExtra,
@@ -34,6 +101,8 @@ export function CopilotChatLayout({
   inputDisabled?: boolean;
   inputPlaceholder?: string;
   projectName?: string;
+  onSwitchProject?: () => void;
+  projectSwitchDisabled?: boolean;
   headerActions?: React.ReactNode;
   banner?: React.ReactNode;
   footerExtra?: React.ReactNode;
@@ -91,18 +160,14 @@ export function CopilotChatLayout({
             </div>
           </div>
           {(headerActions || projectName) ? (
-            <div className="ml-auto flex shrink-0 items-center gap-4">
+            <div className="ml-auto flex shrink-0 items-center gap-2">
               {headerActions}
               {projectName ? (
-                <div className="text-right">
-                  <p className="text-xs text-[var(--muted-foreground)]">Project</p>
-                  <p
-                    className="max-w-[12rem] truncate text-sm font-medium text-[var(--foreground)] sm:max-w-[16rem]"
-                    title={projectName}
-                  >
-                    {projectName}
-                  </p>
-                </div>
+                <ProjectChip
+                  projectName={projectName}
+                  onSwitchProject={onSwitchProject}
+                  disabled={projectSwitchDisabled}
+                />
               ) : null}
             </div>
           ) : null}
