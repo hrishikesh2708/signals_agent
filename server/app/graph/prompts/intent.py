@@ -45,12 +45,13 @@ Current intent:
   open_question: {open_question}
   scope hints: {scope_hint_ids}
 
-Write one short paragraph that:
+Write one short natural-language paragraph for the user that:
 1. Uses scope hints for "did you mean …?" when relevant
 2. Asks ONLY about open_question ({open_question}) — do not ask them to re-pick everything together
 3. If open_question is signal_type, say you need the signal type before choosing destinations
 4. If open_question is channels, confirm the ad platforms (product groups) to send to
 
+Never reply with only a field id such as "source", "signal_type", or "channels".
 Do not list every option — the picker shows those. No markdown fences."""
 
 INTENT_GIVE_UP_SYSTEM = """You are Signals Setup Copilot. After {max_attempts} attempts we still could not confirm intent.

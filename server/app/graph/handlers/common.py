@@ -1,8 +1,18 @@
 import json
 import logging
 import re
+from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# AG-UI streams on_chat_model_* unless metadata opts out — keep internal LLM
+# calls off the transcript (node return still adds the user-facing AIMessage).
+SILENT_LLM_CONFIG: dict[str, Any] = {
+    "metadata": {
+        "emit-messages": False,
+        "emit-tool-calls": False,
+    }
+}
 
 
 def parse_json_response(content: str) -> dict | None:

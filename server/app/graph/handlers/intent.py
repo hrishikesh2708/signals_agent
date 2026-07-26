@@ -10,7 +10,7 @@ from app.graph.handlers.catalogs import (
     format_signal_type_lines,
     format_source_lines,
 )
-from app.graph.handlers.common import display_name, parse_json_response
+from app.graph.handlers.common import SILENT_LLM_CONFIG, display_name, parse_json_response
 from app.graph.prompts import (
     build_intent_clarify_prompt,
     build_intent_extract_prompt,
@@ -45,7 +45,10 @@ async def extract_intent(
         None,
     )
     human = latest if latest is not None else HumanMessage(content="")
-    response = await llm.ainvoke([SystemMessage(content=prompt), human])
+    response = await llm.ainvoke(
+        [SystemMessage(content=prompt), human],
+        config=SILENT_LLM_CONFIG,
+    )
     content = response.content
     if not isinstance(content, str):
         content = str(content)
@@ -67,7 +70,8 @@ async def compose_intent_summary(
                 SystemMessage(
                     content=build_intent_summary_prompt(source, channels, signal_type, name)
                 ),
-            ]
+            ],
+            config=SILENT_LLM_CONFIG,
         )
         content = response.content
         if isinstance(content, str) and content.strip():
@@ -166,6 +170,28 @@ def format_intent_clarify_ack(
     return json.dumps({"type": "step_complete", "message": message})
 
 
+_CLARIFY_FIELD_IDS = frozenset({"source", "signal_type", "channels"})
+
+_CLARIFY_FALLBACKS = {
+    "source": "Which CRM source should we connect?",
+    "signal_type": (
+        "v1 supports offline conversions only — please confirm the signal type in the picker."
+    ),
+    "channels": "Which ad destinations should we send to? Pick them in the picker.",
+}
+
+
+def _usable_clarify_ask(text: str, open_question: str) -> bool:
+    """Reject empty / field-id-only model replies so fallbacks can run."""
+    cleaned = text.strip()
+    if len(cleaned) < 12:
+        return False
+    lowered = cleaned.lower().strip(" .!?\"'`")
+    if lowered in _CLARIFY_FIELD_IDS or lowered == open_question.lower():
+        return False
+    return True
+
+
 async def compose_intent_clarify_message(
     llm: ChatOpenAI,
     messages: list[BaseMessage],
@@ -186,20 +212,25 @@ async def compose_intent_clarify_message(
                     )
                 ),
                 *messages,
-            ]
+            ],
+            config=SILENT_LLM_CONFIG,
         )
         content = response.content
-        if isinstance(content, str) and content.strip():
+        if isinstance(content, str) and _usable_clarify_ask(content, open_question):
             return content.strip()
+        if isinstance(content, str) and content.strip():
+            logger.warning(
+                "compose_intent_clarify_message: rejecting unusable ask %r for %s",
+                content.strip()[:80],
+                open_question,
+            )
     except Exception:
         logger.exception("compose_intent_clarify_message: LLM call failed")
 
-    fallbacks = {
-        "source": "Which CRM source should we connect?",
-        "signal_type": "v1 supports offline conversions only — please confirm the signal type in the picker.",
-        "channels": "Which ad destinations should we send to? Pick them in the picker.",
-    }
-    return fallbacks.get(open_question, "Please confirm the next setup detail in the picker.")
+    return _CLARIFY_FALLBACKS.get(
+        open_question,
+        "Please confirm the next setup detail in the picker.",
+    )
 
 
 async def compose_intent_give_up_message(
@@ -209,7 +240,8 @@ async def compose_intent_give_up_message(
     name = display_name(user_name)
     try:
         response = await llm.ainvoke(
-            [SystemMessage(content=build_intent_give_up_prompt(name, INTENT_MAX_ATTEMPTS))]
+            [SystemMessage(content=build_intent_give_up_prompt(name, INTENT_MAX_ATTEMPTS))],
+            config=SILENT_LLM_CONFIG,
         )
         content = response.content
         if isinstance(content, str) and content.strip():

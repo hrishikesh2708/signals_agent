@@ -8,7 +8,7 @@ from app.graph.handlers.catalogs import (
     format_signal_type_lines,
     format_source_lines,
 )
-from app.graph.handlers.common import display_name, parse_json_response
+from app.graph.handlers.common import SILENT_LLM_CONFIG, display_name, parse_json_response
 from app.graph.prompts import (
     build_scope_classify_prompt,
     build_scope_compose_prompt,
@@ -25,7 +25,10 @@ async def classify_scope(llm: ChatOpenAI, latest_text: str) -> dict | None:
         format_channel_lines(),
         format_signal_type_lines(),
     )
-    response = await llm.ainvoke([SystemMessage(content=prompt), HumanMessage(content=latest_text)])
+    response = await llm.ainvoke(
+        [SystemMessage(content=prompt), HumanMessage(content=latest_text)],
+        config=SILENT_LLM_CONFIG,
+    )
     content = response.content
     if not isinstance(content, str):
         content = str(content)
@@ -44,7 +47,8 @@ async def compose_scope_reply(
             [
                 SystemMessage(content=build_scope_compose_prompt(scope, name)),
                 HumanMessage(content=latest_text),
-            ]
+            ],
+            config=SILENT_LLM_CONFIG,
         )
         content = response.content
         if isinstance(content, str) and content.strip():

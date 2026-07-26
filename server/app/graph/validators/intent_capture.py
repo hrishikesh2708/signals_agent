@@ -98,4 +98,5 @@ def build_intent_from_extract(
         "status": "partial",
         "open_question": _next_open_question(source, channels, signal_type),
         "attempt": 1,
+        "hitl_prompted": False,
     }

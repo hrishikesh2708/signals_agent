@@ -212,8 +212,13 @@ export function parseAgentMessage(content: unknown): ParsedAgentMessage {
       return { kind: "warning", data: parsed as WarningMessage };
     }
 
+    // Clarification chat bubbles need a real `message`. Interrupt payloads also
+    // use type "intent_clarify" (with field/options) — do not render those here.
     if (obj.type === "clarification_needed" || obj.type === "intent_clarify") {
-      return { kind: "clarification", data: parsed as ClarificationMessage };
+      if (typeof obj.message === "string" && obj.message.trim()) {
+        return { kind: "clarification", data: parsed as ClarificationMessage };
+      }
+      return { kind: "text", text: "" };
     }
 
     if (obj.type === "clarification_resolved") {

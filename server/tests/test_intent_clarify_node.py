@@ -37,6 +37,88 @@ def _awaiting_signal_type() -> IntentPhase:
 
 
 @pytest.mark.asyncio
+async def test_intent_clarify_visit_a_emits_ask_without_interrupt() -> None:
+    """hitl_prompted missing/False → compose ask AIMessage; no interrupt yet."""
+    intent: IntentPhase = {
+        "source": "salesforce",
+        "channels": [],
+        "destinations": [],
+        "signal_type": None,
+        "status": "partial",
+        "open_question": "signal_type",
+        "attempt": 1,
+        "hitl_prompted": False,
+    }
+    llm = MagicMock()
+    llm.ainvoke = AsyncMock(
+        return_value=MagicMock(
+            content="Before destinations, please confirm the signal type for Salesforce."
+        )
+    )
+
+    with (
+        patch("app.graph.nodes.intent_clarify.get_llm", return_value=llm),
+        patch("app.graph.nodes.intent_clarify.interrupt") as mock_interrupt,
+        patch(
+            "app.graph.nodes.intent_clarify.compose_intent_clarify_message",
+            new=AsyncMock(
+                return_value="Before destinations, please confirm the signal type for Salesforce."
+            ),
+        ) as mock_compose,
+    ):
+        result = await intent_clarify_node(
+            {
+                "messages": [HumanMessage(content="connect salesforce")],
+                "user_name": "Ada",
+                "scope": None,
+                "intent": intent,
+            }
+        )
+
+    mock_interrupt.assert_not_called()
+    mock_compose.assert_awaited_once()
+    assert result["intent"]["hitl_prompted"] is True
+    assert result["intent"]["open_question"] == "signal_type"
+    assert len(result["messages"]) == 1
+    assert "signal type" in result["messages"][0].content.lower()
+
+
+@pytest.mark.asyncio
+async def test_intent_clarify_visit_a_runs_when_hitl_prompted_missing() -> None:
+    """Capture omits hitl_prompted — Visit A must still compose."""
+    intent = {
+        "source": "salesforce",
+        "channels": [],
+        "destinations": [],
+        "signal_type": None,
+        "status": "partial",
+        "open_question": "signal_type",
+        "attempt": 1,
+    }
+
+    with (
+        patch("app.graph.nodes.intent_clarify.get_llm"),
+        patch("app.graph.nodes.intent_clarify.interrupt") as mock_interrupt,
+        patch(
+            "app.graph.nodes.intent_clarify.compose_intent_clarify_message",
+            new=AsyncMock(return_value="Please confirm the signal type in the picker."),
+        ) as mock_compose,
+    ):
+        result = await intent_clarify_node(
+            {
+                "messages": [HumanMessage(content="connect salesforce")],
+                "user_name": "Ada",
+                "scope": None,
+                "intent": intent,  # type: ignore[arg-type]
+            }
+        )
+
+    mock_compose.assert_awaited_once()
+    mock_interrupt.assert_not_called()
+    assert result["intent"]["hitl_prompted"] is True
+
+
+@pytest.mark.asyncio
 async def test_intent_clarify_skips_hitl_when_human_fields_full() -> None:
     """Full human fields → derive destinations + intent_summary; no interrupt."""
     intent = _full_human_intent()
