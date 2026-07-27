@@ -4,20 +4,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { InterruptCardProps } from "@/components/chat/interrupts/interrupt-card-props";
-import type {
-  SelectOption,
-  CanonicalMappingRow,
-  ChannelConnectionStatus,
-  MappingDestination,
-  MappingReviewRow,
-  UnresolvedField,
-} from "@/lib/interrupt-types";
+import type { SelectOption } from "@/lib/interrupt-types";
 
 export function SelectObjectInterruptCard({ payload, onApprove }: InterruptCardProps) {
   const rawOptions = payload.options ?? [];
 
   // Backend sends recommended (and default_selected = recommended).
-  // payload.requested is not used for the normal gather_object flow.
   const recommended =
     (payload.recommended as string | undefined) ||
     (Array.isArray(payload.default_selected)
@@ -38,12 +30,17 @@ export function SelectObjectInterruptCard({ payload, onApprove }: InterruptCardP
 
   const [selected, setSelected] = useState<string>(suggested || allObjects[0] || "");
 
+  const title =
+    typeof payload.title === "string" && payload.title.trim()
+      ? payload.title
+      : "Select object";
+
   return (
     <Card className="border-[var(--border)] bg-[var(--card)]">
       <CardContent className="p-4 space-y-4">
         {/* Section label — message/hint rendered as chat bubbles in headless-chat */}
         <p className="text-[10px] font-semibold tracking-widest text-[var(--muted-foreground)] uppercase">
-          {(payload.title as string | undefined) || "Salesforce object"}
+          {title}
         </p>
 
         <div className="flex flex-wrap gap-2">
@@ -97,7 +94,7 @@ export function SelectObjectInterruptCard({ payload, onApprove }: InterruptCardP
           onClick={() => onApprove({ selected })}
           className="w-full"
         >
-          {selected ? `Continue with ${selected}` : "Select an object"}
+          {selected ? `Use ${selected}` : "Select an object"}
         </Button>
       </CardContent>
     </Card>

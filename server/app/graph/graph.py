@@ -6,12 +6,15 @@ from app.graph.nodes import (
     intent_capture_node,
     intent_clarify_node,
     scope_guard_node,
+    select_object_node,
     source_connection_node,
 )
 from app.graph.routers import (
     route_after_intent_capture,
     route_after_intent_clarify,
     route_after_scope_guard,
+    route_after_select_object,
+    route_after_source_connection,
 )
 from app.graph.state import GraphInput, SignalsState
 
@@ -22,6 +25,7 @@ def _build() -> StateGraph:
     graph.add_node("intent_capture", intent_capture_node)
     graph.add_node("intent_clarify", intent_clarify_node)
     graph.add_node("source_connection", source_connection_node)
+    graph.add_node("select_object", select_object_node)
 
     graph.add_edge(START, "scope_guard")
     graph.add_conditional_edges(
@@ -48,7 +52,22 @@ def _build() -> StateGraph:
             "__end__": END,
         },
     )
-    graph.add_edge("source_connection", END)
+    graph.add_conditional_edges(
+        "source_connection",
+        route_after_source_connection,
+        {
+            "select_object": "select_object",
+            "__end__": END,
+        },
+    )
+    graph.add_conditional_edges(
+        "select_object",
+        route_after_select_object,
+        {
+            "select_object": "select_object",
+            "__end__": END,
+        },
+    )
     return graph
 
 

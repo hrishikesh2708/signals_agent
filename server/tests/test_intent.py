@@ -186,10 +186,10 @@ def test_with_derived_destinations_marks_complete() -> None:
     assert "missing" not in completed
 
 
-def test_route_after_intent_clarify_ends_on_complete() -> None:
+def test_route_after_intent_clarify_to_source_connection_on_complete() -> None:
     assert (
         route_after_intent_clarify({"intent": {"status": "complete", "open_question": None}})
-        == "__end__"
+        == "source_connection"
     )
     assert (
         route_after_intent_clarify(

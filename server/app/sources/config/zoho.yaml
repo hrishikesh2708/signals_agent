@@ -42,7 +42,7 @@ schema:
     - email
     - phone
     - mobile
-  api_version: v2
+  api_version: v8
 
 related_identity:
   Deals:

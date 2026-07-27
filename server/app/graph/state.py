@@ -34,6 +34,18 @@ class IntentPhase(TypedDict):
     hitl_prompted: bool  # False until ask AIMessage sent for current open_question
 
 
+class SourcePhase(TypedDict):
+    """Post-auth source connection + object selection (separate from intent)."""
+
+    source_id: str
+    source_label: str
+    project_name: str | None
+    status: Literal["connected"]
+    object_name: str | None  # user selection — None until select_object resume
+    recommended_object: str | None  # optional LLM hint; not a progress gate
+    object_hitl_prompted: bool  # False until Visit A ask messages are sent
+
+
 __all__ = [
     "CONFIDENCE_THRESHOLD",
     "GraphInput",
@@ -43,6 +55,7 @@ __all__ = [
     "MatchedToken",
     "ScopePhase",
     "SignalsState",
+    "SourcePhase",
     "build_invoke_input",
 ]
 
@@ -55,6 +68,7 @@ class SignalsState(TypedDict):
     project_id: NotRequired[str | None]  # injected from session / X-Project-Id
     scope: ScopePhase | None
     intent: IntentPhase | None
+    source: NotRequired[SourcePhase | None]
 
 
 class GraphInput(TypedDict):

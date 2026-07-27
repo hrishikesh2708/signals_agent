@@ -24,7 +24,7 @@ type ConnectStatus = "idle" | "connecting" | "ready" | "error";
 
 const INTERRUPT_STEPS: Record<string, { step: number; total: number; label: string }> = {
   source_connection: { step: 3, total: 9, label: "Connect source" },
-  select_object: { step: 4, total: 9, label: "Select Salesforce object" },
+  select_object: { step: 4, total: 9, label: "Select object" },
   check_channels: { step: 5, total: 9, label: "Check destination connections" },
   mapping_review: { step: 6, total: 9, label: "Review field mapping" },
   canonical_mapping: { step: 7, total: 9, label: "Canonical layer" },

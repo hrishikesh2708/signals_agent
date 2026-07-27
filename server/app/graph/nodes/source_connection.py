@@ -7,7 +7,7 @@ from langgraph.types import interrupt
 from sqlalchemy import select
 
 from app.database import async_session_factory
-from app.graph.state import SignalsState
+from app.graph.state import SignalsState, SourcePhase
 from app.graph.validators.source_connection import (
     build_source_connection_payload,
     format_source_connection_ack,
@@ -36,8 +36,35 @@ async def _connection_status(
         return connection is not None, project_name
 
 
-def _ack_messages(source_label: str) -> dict:
+def _connected_phase(
+    *,
+    source_id: str,
+    source_label: str,
+    project_name: str | None,
+) -> SourcePhase:
     return {
+        "source_id": source_id,
+        "source_label": source_label,
+        "project_name": project_name,
+        "status": "connected",
+        "object_name": None,
+        "recommended_object": None,
+        "object_hitl_prompted": False,
+    }
+
+
+def _success_update(
+    *,
+    source_id: str,
+    source_label: str,
+    project_name: str | None,
+) -> dict:
+    return {
+        "source": _connected_phase(
+            source_id=source_id,
+            source_label=source_label,
+            project_name=project_name,
+        ),
         "messages": [AIMessage(content=format_source_connection_ack(source_label))],
     }
 
@@ -45,9 +72,9 @@ def _ack_messages(source_label: str) -> dict:
 async def source_connection_node(state: SignalsState) -> dict:
     """Gate on a usable SourceConnection; interrupt only when auth is needed.
 
-    - Connected for ``(project_id, intent.source)`` → step_complete, continue.
+    - Connected for ``(project_id, intent.source)`` → SourcePhase + step_complete.
     - Otherwise → ``source_connection`` HITL; on resume re-check the DB.
-    - After successful connect (or already connected) → step_complete ack.
+    - After successful connect (or already connected) → SourcePhase + step_complete.
     """
     intent = state.get("intent") or {}
     raw_source = intent.get("source")
@@ -72,7 +99,11 @@ async def source_connection_node(state: SignalsState) -> dict:
 
     connected, project_name = await _connection_status(project_id, source_id)
     if connected:
-        return _ack_messages(source_label)
+        return _success_update(
+            source_id=source_id,
+            source_label=source_label,
+            project_name=project_name,
+        )
 
     resume = interrupt(
         build_source_connection_payload(
@@ -84,9 +115,13 @@ async def source_connection_node(state: SignalsState) -> dict:
     )
     parse_source_connection_resume(resume)
 
-    connected, _ = await _connection_status(project_id, source_id)
+    connected, project_name = await _connection_status(project_id, source_id)
     if connected:
-        return _ack_messages(source_label)
+        return _success_update(
+            source_id=source_id,
+            source_label=source_label,
+            project_name=project_name,
+        )
 
     return {
         "messages": [

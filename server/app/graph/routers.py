@@ -23,3 +23,19 @@ def route_after_intent_clarify(state: dict) -> str:
     if intent.get("open_question") is not None:
         return "intent_clarify"
     return "__end__"
+
+
+def route_after_source_connection(state: dict) -> str:
+    source = state.get("source") or {}
+    if source.get("status") == "connected":
+        return "select_object"
+    return "__end__"
+
+
+def route_after_select_object(state: dict) -> str:
+    source = state.get("source") or {}
+    if source.get("object_name"):
+        return "__end__"
+    if source.get("status") == "connected":
+        return "select_object"
+    return "__end__"

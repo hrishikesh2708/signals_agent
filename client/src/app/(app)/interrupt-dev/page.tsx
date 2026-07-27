@@ -15,6 +15,15 @@
  *   options: [{ id, label, enabled, description? }]
  *   context, attempt, max_attempts
  *   → resume: { selected: "<id>" } | { selected: ["id", ...] }
+ *
+ * Live select_object contract (`build_select_object_payload`):
+ *   type: "select_object"
+ *   title: "Select object"
+ *   options: string[]  (from source YAML objects.common)
+ *   recommended?: string
+ *   default_selected?: string
+ *   source_id: string
+ *   → resume: { selected: "<object>" }
  */
 
 "use client";
@@ -83,13 +92,14 @@ const CLARIFY_MOCKS: { label: string; field: string; payload: ApprovalInterruptP
   { label: "Channels", field: "channels", payload: MOCK_CLARIFY_CHANNELS },
 ];
 
-// ── Legacy mocks (demoted) ─────────────────────────────────────────────────
-
-// ── select_object (legacy) ────────────────────────────────────────────────
+// ── select_object (BE-shaped — Salesforce objects.common) ─────────────────
 const MOCK_SELECT_OBJECT: ApprovalInterruptPayload = {
   type: "select_object",
-  requested: "opportunity",
-  options: ["Opportunity", "Lead", "Contact", "Account", "Campaign", "CampaignMember"],
+  title: "Select object",
+  options: ["Lead", "Contact", "Account", "Opportunity"],
+  recommended: "Opportunity",
+  default_selected: "Opportunity",
+  source_id: "salesforce",
 };
 
 
@@ -269,7 +279,6 @@ const MOCK_RESOLVE_FIELDS_RESOLVED: ApprovalInterruptPayload = {
 
 
 const LEGACY_STAGES: { label: string; tag: string; payload: ApprovalInterruptPayload }[] = [
-  { label: "Legacy — Select object",             tag: "select_object",    payload: MOCK_SELECT_OBJECT            },
   { label: "Check channels (mixed)",             tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_MIXED         },
   { label: "Check channels (with expired)",      tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_EXPIRED       },
   { label: "Check channels (all connected)",     tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_ALL_CONNECTED },
@@ -369,9 +378,36 @@ export default function InterruptDevPage() {
         </section>
 
         <div className="border-t border-[var(--border)] pt-8 space-y-1">
+          <p className="text-sm font-semibold text-[var(--foreground)]">select_object</p>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            options from YAML objects.common · recommended badge · resume {"{ selected }"}
+          </p>
+        </div>
+
+        <section>
+          <div className="mb-3">
+            <p className="text-sm font-semibold text-[var(--foreground)]">Select object</p>
+            <code className="text-xs text-[var(--muted-foreground)]">
+              type: &quot;select_object&quot; · title / options / recommended / source_id
+            </code>
+          </div>
+          <HitlApprovalCard
+            payload={MOCK_SELECT_OBJECT}
+            sessionId={sessionId}
+            onApprove={(response) => handleApprove("select-object", response)}
+            onReject={(reason) => handleReject("select-object", reason)}
+          />
+          {responses["select-object"] ? (
+            <pre className="mt-2 rounded-md border border-[var(--border)] bg-[var(--secondary)] p-3 text-xs text-[var(--foreground)] overflow-x-auto">
+              {JSON.stringify(responses["select-object"], null, 2)}
+            </pre>
+          ) : null}
+        </section>
+
+        <div className="border-t border-[var(--border)] pt-8 space-y-1">
           <p className="text-sm font-semibold text-[var(--muted-foreground)]">Other interrupts</p>
           <p className="text-xs text-[var(--muted-foreground)]">
-            select_object remains for preview; source/channels clarifications use intent_clarify above.
+            Preview-only cards for later stages.
           </p>
         </div>
 

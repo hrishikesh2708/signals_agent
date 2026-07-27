@@ -12,12 +12,14 @@ from app.graph.handlers.intent import (
     format_intent_summary_message,
 )
 from app.graph.handlers.scope import classify_scope, compose_scope_reply
+from app.graph.handlers.select_object import compose_object_suggestion
 
 __all__ = [
     "classify_scope",
     "compose_intent_clarify_message",
     "compose_intent_give_up_message",
     "compose_intent_summary",
+    "compose_object_suggestion",
     "compose_scope_reply",
     "extract_intent",
     "format_channel_lines",
