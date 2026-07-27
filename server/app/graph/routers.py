@@ -16,7 +16,7 @@ def route_after_intent_capture(state: dict) -> str:
 def route_after_intent_clarify(state: dict) -> str:
     intent = state.get("intent") or {}
     if intent.get("status") == "complete":
-        return "__end__"
+        return "source_connection"
     if intent.get("attempt", 0) > INTENT_MAX_ATTEMPTS:
         return "__end__"
     # Loop only while a human field still needs HITL.

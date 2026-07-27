@@ -19,11 +19,28 @@ export function backendBaseUrl(): string {
   return BACKEND_URL;
 }
 
+type BackendFetchInit = RequestInit & {
+  noAuth?: boolean;
+  authorization?: string;
+  /**
+   * Path prefix on the FastAPI host.
+   * Default `/api/v1` for auth/projects/sessions.
+   * Pass `""` for unversioned routes (e.g. `/connections/...`).
+   */
+  apiPrefix?: string;
+};
+
 export async function backendFetch(
   path: string,
-  init: RequestInit & { noAuth?: boolean; authorization?: string } = {},
+  init: BackendFetchInit = {},
 ): Promise<Response> {
-  const { noAuth, authorization, headers: initHeaders, ...rest } = init;
+  const {
+    noAuth,
+    authorization,
+    apiPrefix = "/api/v1",
+    headers: initHeaders,
+    ...rest
+  } = init;
 
   const headers: Record<string, string> = {
     Accept: "application/json",
@@ -38,7 +55,8 @@ export async function backendFetch(
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  return fetch(`${BACKEND_URL}/api/v1${path}`, {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return fetch(`${BACKEND_URL}${apiPrefix}${normalized}`, {
     ...rest,
     headers,
     cache: "no-store",

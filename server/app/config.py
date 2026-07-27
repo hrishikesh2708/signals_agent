@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 60 * 24 * 7
     cors_origins: list[str] = ["http://localhost:3000"]
     api_base_url: str = "http://localhost:8000"
+    # Next.js origin (CORS / links). OAuth callback closes the popup via HTML postMessage.
+    client_url: str = "http://localhost:3000"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 

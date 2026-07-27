@@ -189,6 +189,12 @@ export interface AuthorizeConnectionResponse {
   state: string;
 }
 
+export interface SourceConnectionStatusResponse {
+  connected: boolean;
+  instance_url: string | null;
+  source_id: string;
+}
+
 /** REST surface — auth and projects use the Next.js BFF; health hits the backend directly. */
 export const api = {
   health: () => request<HealthResponse>("/health"),
@@ -249,20 +255,25 @@ export const api = {
       bearerToken: sessionToken,
     }),
 
-  // --- Connections (BFF; session id header) ---
+  // --- Connections (BFF; project-scoped source OAuth) ---
 
-  /** Start OAuth for a connector via the Next.js BFF (forwards JWT + session id). */
+  /** Start OAuth for a source connector via the Next.js BFF (forwards JWT). */
   authorizeConnection: (
-    connectorSlug: string,
+    sourceId: string,
     projectId: string,
-    sessionId: string,
   ): Promise<AuthorizeConnectionResponse> =>
     bffRequest<AuthorizeConnectionResponse>(
-      `/api/connections/${connectorSlug}?project_id=${encodeURIComponent(projectId)}`,
-      {
-        method: "POST",
-        headers: { "X-Session-Id": sessionId },
-      },
+      `/api/connections/sources/${encodeURIComponent(sourceId)}/authorize?project_id=${encodeURIComponent(projectId)}`,
+      { method: "POST" },
+    ),
+
+  /** Connection status for a source on the active project. */
+  getSourceConnectionStatus: (
+    sourceId: string,
+    projectId: string,
+  ): Promise<SourceConnectionStatusResponse> =>
+    bffRequest<SourceConnectionStatusResponse>(
+      `/api/connections/sources/${encodeURIComponent(sourceId)}/status?project_id=${encodeURIComponent(projectId)}`,
     ),
 
   /** Mock-connect a destination when live OAuth credentials are unavailable. */

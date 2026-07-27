@@ -11,14 +11,22 @@ from app.graph.validators.intent_clarify import (
     with_derived_destinations,
 )
 from app.graph.validators.scope import validate_scope_json
+from app.graph.validators.source_connection import (
+    build_source_connection_payload,
+    format_source_connection_ack,
+    parse_source_connection_resume,
+)
 
 __all__ = [
     "build_clarify_payload",
     "build_intent_from_extract",
+    "build_source_connection_payload",
     "derive_destinations",
+    "format_source_connection_ack",
     "last_human_text",
     "merge_intent_selection",
     "parse_clarify_selection",
+    "parse_source_connection_resume",
     "resolve_product_groups",
     "scope_hint_ids",
     "validate_scope_json",

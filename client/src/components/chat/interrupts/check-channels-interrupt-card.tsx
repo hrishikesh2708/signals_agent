@@ -13,6 +13,7 @@ import type {
   UnresolvedField,
 } from "@/lib/interrupt-types";
 import { api } from "@/lib/api";
+import { connectSourceViaOAuth } from "@/lib/oauth-popup";
 import { CHANNEL_AVATAR_COLORS, MOCK_ONLY_SLUGS, META_SLUGS } from "@/components/chat/interrupts/platform-colors";
 
 export function CheckChannelsInterruptCard({ payload, sessionId, onApprove }: InterruptCardProps) {
@@ -41,24 +42,13 @@ export function CheckChannelsInterruptCard({ payload, sessionId, onApprove }: In
     setErrors((e) => ({ ...e, [ch.id]: "" }));
 
     try {
-      const { auth_url } = await api.authorizeConnection(connectorSlug, projectId, sessionId);
-      const popup = window.open(auth_url, "oauth_popup", "width=600,height=700");
-      if (!popup) {
-        setErrors((e) => ({ ...e, [ch.id]: "Popup blocked — please allow popups and retry." }));
+      const result = await connectSourceViaOAuth(connectorSlug, projectId);
+      if (result.success) {
+        onApprove({ action: "connected", platform_id: ch.id });
+      } else {
+        setErrors((e) => ({ ...e, [ch.id]: result.error }));
         setConnecting(null);
-        return;
       }
-      function onMessage(event: MessageEvent) {
-        if (event.data?.type !== "oauth_complete") return;
-        window.removeEventListener("message", onMessage);
-        if (event.data.success) {
-          onApprove({ action: "connected", platform_id: ch.id });
-        } else {
-          setErrors((ev) => ({ ...ev, [ch.id]: event.data.error ?? "Connection failed — please retry." }));
-          setConnecting(null);
-        }
-      }
-      window.addEventListener("message", onMessage);
     } catch (err) {
       setErrors((e) => ({ ...e, [ch.id]: err instanceof Error ? err.message : "Unexpected error" }));
       setConnecting(null);

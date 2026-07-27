@@ -9,8 +9,8 @@ aliases:
 connector: salesforce 
 
 oauth:
-  start_path: /api/auth/salesforce
-  callback_path: /api/auth/salesforce/callback
+  start_path: /connections/sources/salesforce/authorize
+  callback_path: /connections/sources/salesforce/callback
   pkce: true
   client_id_env: SF_CLIENT_ID
   client_secret_env: SF_CLIENT_SECRET

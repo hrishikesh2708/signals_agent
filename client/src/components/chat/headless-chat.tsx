@@ -5,6 +5,7 @@ import { AgentTextBubble } from "./messages/agent-text-bubble";
 import { ThinkingCard } from "./messages/thinking-card";
 import { ChatErrorBoundary } from "./chat-error-boundary";
 import { HitlApprovalCard } from "./interrupts/hitl-approval-card";
+import { SourceStatusDropdown } from "./source-status-dropdown";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -22,7 +23,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 type ConnectStatus = "idle" | "connecting" | "ready" | "error";
 
 const INTERRUPT_STEPS: Record<string, { step: number; total: number; label: string }> = {
-  check_connection: { step: 3, total: 9, label: "Check source connection" },
+  source_connection: { step: 3, total: 9, label: "Connect source" },
   select_object: { step: 4, total: 9, label: "Select Salesforce object" },
   check_channels: { step: 5, total: 9, label: "Check destination connections" },
   mapping_review: { step: 6, total: 9, label: "Review field mapping" },
@@ -282,24 +283,27 @@ export function HeadlessChat({
       projectSwitchDisabled={newChatLoading || inputBusy}
       scrollApiRef={scrollApiRef}
       headerActions={
-        onNewChat ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onNewChat}
-            disabled={newChatLoading || inputBusy}
-          >
-            {newChatLoading ? (
-              <span className="flex items-center gap-2">
-                <Spinner size="sm" />
-                New chat
-              </span>
-            ) : (
-              "New chat"
-            )}
-          </Button>
-        ) : null
+        <>
+          <SourceStatusDropdown />
+          {onNewChat ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onNewChat}
+              disabled={newChatLoading || inputBusy}
+            >
+              {newChatLoading ? (
+                <span className="flex items-center gap-2">
+                  <Spinner size="sm" />
+                  New chat
+                </span>
+              ) : (
+                "New chat"
+              )}
+            </Button>
+          ) : null}
+        </>
       }
       draft={draft}
       onDraftChange={setDraft}

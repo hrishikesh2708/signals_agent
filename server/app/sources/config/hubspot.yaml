@@ -8,8 +8,8 @@ aliases:
   - hs
 
 oauth:
-  start_path: /api/auth/source/hubspot
-  callback_path: /api/auth/source/hubspot/callback
+  start_path: /connections/sources/hubspot/authorize
+  callback_path: /connections/sources/hubspot/callback
   pkce: false
   client_id_env: HUBSPOT_CLIENT_ID
   client_secret_env: HUBSPOT_CLIENT_SECRET
@@ -17,6 +17,7 @@ oauth:
   scope_env: HUBSPOT_SCOPES
   authorize_url: https://app.hubspot.com/oauth/authorize
   token_url: https://api.hubapi.com/oauth/v1/token
+  default_instance_url: https://api.hubapi.com
 
 objects:
   discover: false

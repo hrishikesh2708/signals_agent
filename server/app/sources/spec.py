@@ -19,6 +19,8 @@ class OAuthSpec(BaseModel):
     default_login_url: str | None = None
     accounts_url_env: str | None = None
     default_accounts_url: str | None = None
+    # API host when the token response omits instance_url / api_domain (HubSpot, Zoho).
+    default_instance_url: str | None = None
 
 
 class SchemaSpec(BaseModel):

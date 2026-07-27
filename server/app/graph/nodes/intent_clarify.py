@@ -22,7 +22,7 @@ async def _complete_with_summary(
     intent: IntentPhase,
     user_name: str | None,
 ) -> dict:
-    """Derive destinations, mark complete, emit intent_summary → router END."""
+    """Derive destinations, mark complete, emit intent_summary → source_connection."""
     llm = get_llm()
     completed = with_derived_destinations(intent)
     summary_text = await compose_intent_summary(llm, completed, user_name)

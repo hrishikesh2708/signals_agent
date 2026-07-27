@@ -6,7 +6,13 @@ export const PROJECT_ID_COOKIE = "dh_project_id";
 function isValidProject(value: unknown): value is ProjectResponse {
   if (!value || typeof value !== "object") return false;
   const p = value as ProjectResponse;
-  return typeof p.id === "string" && p.id.length > 0 && typeof p.name === "string";
+  return (
+    typeof p.id === "string" &&
+    p.id.length > 0 &&
+    typeof p.name === "string" &&
+    typeof p.user_id === "string" &&
+    p.user_id.length > 0
+  );
 }
 
 export function loadStoredProject(): ProjectResponse | null {

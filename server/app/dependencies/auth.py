@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,6 +56,15 @@ async def get_current_project(
             detail="Project not found",
         )
     return project
+
+
+async def get_owned_project_from_query(
+    project_id: UUID = Query(..., description="Project that owns the connection"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Project:
+    """Same ownership check as get_current_project, but project_id comes from the query string."""
+    return await get_current_project(project_id, current_user, db)
 
 
 async def get_current_session(

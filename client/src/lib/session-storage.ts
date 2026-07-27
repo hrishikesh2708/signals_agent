@@ -7,6 +7,7 @@ export interface StoredChatSession {
   access_token: string;
   expires_at: number;
   project_id: string;
+  user_id: string;
 }
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
@@ -17,6 +18,16 @@ export function loadStoredSession(): StoredChatSession | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as StoredChatSession;
+    if (
+      typeof parsed.session_id !== "string" ||
+      typeof parsed.access_token !== "string" ||
+      typeof parsed.project_id !== "string" ||
+      typeof parsed.user_id !== "string" ||
+      typeof parsed.expires_at !== "number"
+    ) {
+      window.sessionStorage.removeItem(CHAT_SESSION_KEY);
+      return null;
+    }
     if (parsed.expires_at * 1000 < Date.now()) {
       window.sessionStorage.removeItem(CHAT_SESSION_KEY);
       return null;
@@ -62,11 +73,16 @@ export function loadStoredSessionId(): string | null {
  */
 export async function createServerSession(
   projectId: string,
-  options?: { forceNew?: boolean },
+  options: { userId: string; forceNew?: boolean },
 ): Promise<StoredChatSession> {
-  if (!options?.forceNew) {
+  const { userId, forceNew } = options;
+  if (!forceNew) {
     const existing = loadStoredSession();
-    if (existing?.access_token && existing.project_id === projectId) {
+    if (
+      existing?.access_token &&
+      existing.project_id === projectId &&
+      existing.user_id === userId
+    ) {
       return existing;
     }
   }
@@ -77,6 +93,7 @@ export async function createServerSession(
     access_token: created.token,
     expires_at: jwtExpiresAt(created.token),
     project_id: projectId,
+    user_id: userId,
   };
   storeSession(session);
   return session;

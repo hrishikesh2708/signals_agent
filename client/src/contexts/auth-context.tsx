@@ -12,6 +12,7 @@ import {
 
 import { api } from "@/lib/api";
 import { clearStoredUser, loadStoredUser, storeUser } from "@/lib/auth-storage";
+import { clearClientWorkspace } from "@/lib/client-workspace";
 import type { UserResponse } from "@/lib/types";
 
 interface AuthContextValue {
@@ -35,10 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         storeUser(data.user);
         setUser(data.user);
       } else {
+        clearClientWorkspace();
         clearStoredUser();
         setUser(null);
       }
     } catch {
+      clearClientWorkspace();
       clearStoredUser();
       setUser(null);
     } finally {
@@ -52,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
+      clearClientWorkspace();
       await api.login({ email, password });
       await refresh();
     },
@@ -62,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await api.logout();
     } finally {
+      clearClientWorkspace();
       clearStoredUser();
       setUser(null);
     }

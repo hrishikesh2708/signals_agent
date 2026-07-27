@@ -19,6 +19,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/contexts/auth-context";
 import { api, ApiError } from "@/lib/api";
 import { fieldErrorsByName, parseApiErrorBody } from "@/lib/api-errors";
+import { clearClientWorkspace } from "@/lib/client-workspace";
 import {
   REGISTER_FIELD_HINTS,
   setRegisterInputValidity,
@@ -103,6 +104,7 @@ export function RegisterForm() {
 
     setSubmitting(true);
     try {
+      clearClientWorkspace();
       await api.register({
         email: email.trim(),
         password,

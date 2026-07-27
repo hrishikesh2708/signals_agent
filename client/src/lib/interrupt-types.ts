@@ -76,6 +76,7 @@ export type ApprovalInterruptPayload = {
   recommended?: string;
   confidence?: string;
   source_label?: string;
+  project_name?: string;
   connection_status?: string;
   account_detail?: string;
   destinations?: MappingDestination[];
@@ -98,7 +99,7 @@ export type ApprovalInterruptPayload = {
   summary_card?: { title: string; lines: string[] };
   confirm_label?: string;
   secondary_label?: string;
-  connector_slug?: string;
+  source_id?: string;
   project_id?: string;
   picklist_fields?: Array<{ name: string; label: string }>;
   suggested_trigger_field?: string;

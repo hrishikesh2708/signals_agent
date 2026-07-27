@@ -11,7 +11,7 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from app.config import configure_logging, settings
 from app.graph.checkpoint import postgres_conn_string
 from app.graph.graph import build_graph
-from app.routers import auth, copilotkit, health, projects, sessions
+from app.routers import auth, connections, copilotkit, health, projects, sessions
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,7 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(connections.router)
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(sessions.router, prefix="/api/v1/auth")
 app.include_router(projects.router, prefix="/api/v1")

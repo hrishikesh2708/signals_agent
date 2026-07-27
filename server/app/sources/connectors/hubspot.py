@@ -12,7 +12,6 @@ from app.sources.registry import env_value
 from app.sources.spec import SchemaSpec, Source
 
 _HTTP_TIMEOUT = httpx.Timeout(30.0)
-_HUBSPOT_API = "https://api.hubapi.com"
 
 
 def parse_properties(raw: dict[str, Any], schema: SchemaSpec) -> list[SourceField]:
@@ -99,11 +98,18 @@ class HubSpotConnector:
             raise RuntimeError(f"HubSpot token refresh failed: {response.text}")
         return response.json()
 
+    def _api_base(self, instance_url: str) -> str:
+        base = (instance_url or "").strip() or (self._source.oauth.default_instance_url or "")
+        if not base:
+            raise RuntimeError(
+                f"Source {self.id}: instance_url missing and oauth.default_instance_url unset"
+            )
+        return base.rstrip("/")
+
     async def describe_object(
         self, instance_url: str, access_token: str, object_name: str
     ) -> list[SourceField]:
-        del instance_url
-        url = f"{_HUBSPOT_API}/crm/v3/properties/{object_name}"
+        url = f"{self._api_base(instance_url)}/crm/v3/properties/{object_name}"
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
             response = await client.get(url, headers={"Authorization": f"Bearer {access_token}"})
         if response.status_code == 401:

@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/contexts/auth-context";
-import { clearProject } from "@/lib/project-storage";
-import { clearSession } from "@/lib/session-storage";
 import { cn } from "@/lib/utils";
 
 function userDisplayName(email?: string, name?: string): string {
@@ -30,8 +28,6 @@ export function SidebarFooter({ collapsed }: { collapsed: boolean }) {
     try {
       await logout();
     } finally {
-      clearSession();
-      clearProject();
       router.replace("/login");
     }
   }

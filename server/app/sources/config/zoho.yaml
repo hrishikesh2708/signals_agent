@@ -9,8 +9,8 @@ aliases:
   - zcrm
 
 oauth:
-  start_path: /api/auth/source/zoho
-  callback_path: /api/auth/source/zoho/callback
+  start_path: /connections/sources/zoho/authorize
+  callback_path: /connections/sources/zoho/callback
   pkce: false
   client_id_env: ZOHO_CLIENT_ID
   client_secret_env: ZOHO_CLIENT_SECRET
@@ -20,6 +20,7 @@ oauth:
   default_accounts_url: https://accounts.zoho.com
   authorize_url: "{accounts_url}/oauth/v2/auth"
   token_url: "{accounts_url}/oauth/v2/token"
+  default_instance_url: https://www.zohoapis.com
 
 objects:
   discover: false

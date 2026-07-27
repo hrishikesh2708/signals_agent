@@ -167,36 +167,18 @@ const MOCK_CANONICAL_MAPPING: ApprovalInterruptPayload = {
 };
 
 
-// ── 3. check_connection (3 variants) ─────────────────────────────────────
-// message stays in the interrupt payload — it's status data, not intro text.
-// account_detail is only sent when connection_status === "connected".
+// ── source_connection ────────────────────────────────────────────────────
+// Needs-connect only. Card builds the 3-line copy from project_name.
+// Connect runs OAuth popup then resumes { action: "connected" }.
 //
-// Inbound:  { type, source_label, connection_status, message, account_detail? }
-// Outbound: onApprove({ action: "connect" })   — connect / reconnect / continue
-//           onReject("change_source")           — only shown when not connected
-const MOCK_CHECK_CONNECTION_NONE: ApprovalInterruptPayload = {
-  type: "check_connection",
+// Inbound:  { type, source_label, project_name, source_id, project_id }
+// Outbound: onApprove({ action: "connected", source_id })
+const MOCK_SOURCE_CONNECTION: ApprovalInterruptPayload = {
+  type: "source_connection",
   source_label: "Salesforce",
-  connection_status: "not_connected",
-  message:
-    "No active connection found for project Acme Prod. I'll open the secure connect screen — your credentials stay on Datahash's existing authentication flow.",
-};
-
-const MOCK_CHECK_CONNECTION_EXPIRED: ApprovalInterruptPayload = {
-  type: "check_connection",
-  source_label: "Salesforce",
-  connection_status: "expired",
-  message:
-    "Your Salesforce connection for project Acme Prod has expired. Reconnect to continue — your credentials stay on Datahash's existing authentication flow.",
-};
-
-const MOCK_CHECK_CONNECTION_OK: ApprovalInterruptPayload = {
-  type: "check_connection",
-  source_label: "Salesforce",
-  connection_status: "connected",
-  account_detail: "Acme Corp · john@acme.com",
-  message:
-    "Active connection found. The agent will use this to fetch your Salesforce schema.",
+  project_name: "Acme Prod",
+  source_id: "salesforce",
+  project_id: "proj_dev_preview",
 };
 
 // ── 5. check_channels (3 variants) ───────────────────────────────────────
@@ -288,9 +270,6 @@ const MOCK_RESOLVE_FIELDS_RESOLVED: ApprovalInterruptPayload = {
 
 const LEGACY_STAGES: { label: string; tag: string; payload: ApprovalInterruptPayload }[] = [
   { label: "Legacy — Select object",             tag: "select_object",    payload: MOCK_SELECT_OBJECT            },
-  { label: "Check connection (not connected)",   tag: "check_connection", payload: MOCK_CHECK_CONNECTION_NONE    },
-  { label: "Check connection (expired)",         tag: "check_connection", payload: MOCK_CHECK_CONNECTION_EXPIRED },
-  { label: "Check connection (connected)",       tag: "check_connection", payload: MOCK_CHECK_CONNECTION_OK      },
   { label: "Check channels (mixed)",             tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_MIXED         },
   { label: "Check channels (with expired)",      tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_EXPIRED       },
   { label: "Check channels (all connected)",     tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_ALL_CONNECTED },
@@ -361,6 +340,33 @@ export default function InterruptDevPage() {
             </section>
           );
         })}
+
+        <div className="border-t border-[var(--border)] pt-8 space-y-1">
+          <p className="text-sm font-semibold text-[var(--foreground)]">source_connection</p>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            needs-connect only · Connect → OAuth → resume {"{ action: \"connected\" }"}
+          </p>
+        </div>
+
+        <section>
+          <div className="mb-3">
+            <p className="text-sm font-semibold text-[var(--foreground)]">Connect source</p>
+            <code className="text-xs text-[var(--muted-foreground)]">
+              type: &quot;source_connection&quot; · source_label / project_name / source_id / project_id
+            </code>
+          </div>
+          <HitlApprovalCard
+            payload={MOCK_SOURCE_CONNECTION}
+            sessionId={sessionId}
+            onApprove={(response) => handleApprove("source-connection", response)}
+            onReject={(reason) => handleReject("source-connection", reason)}
+          />
+          {responses["source-connection"] ? (
+            <pre className="mt-2 rounded-md border border-[var(--border)] bg-[var(--secondary)] p-3 text-xs text-[var(--foreground)] overflow-x-auto">
+              {JSON.stringify(responses["source-connection"], null, 2)}
+            </pre>
+          ) : null}
+        </section>
 
         <div className="border-t border-[var(--border)] pt-8 space-y-1">
           <p className="text-sm font-semibold text-[var(--muted-foreground)]">Other interrupts</p>

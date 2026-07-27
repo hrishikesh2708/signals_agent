@@ -52,6 +52,7 @@ class SignalsState(TypedDict):
 
     messages: Annotated[list[AnyMessage], add_messages]
     user_name: str | None
+    project_id: NotRequired[str | None]  # injected from session / X-Project-Id
     scope: ScopePhase | None
     intent: IntentPhase | None
 
@@ -61,6 +62,7 @@ class GraphInput(TypedDict):
 
     messages: Annotated[list[AnyMessage], add_messages]
     user_name: NotRequired[str | None]
+    project_id: NotRequired[str | None]
 
 
 def build_invoke_input(

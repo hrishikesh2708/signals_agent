@@ -12,7 +12,6 @@ from app.sources.registry import env_value
 from app.sources.spec import SchemaSpec, Source
 
 _HTTP_TIMEOUT = httpx.Timeout(30.0)
-_DEFAULT_API_DOMAIN = "https://www.zohoapis.com"
 
 
 def parse_fields(raw: dict[str, Any], schema: SchemaSpec) -> list[SourceField]:
@@ -67,12 +66,6 @@ def _oauth_env(source: Source) -> dict[str, str]:
     }
 
 
-def _api_base(instance_url: str) -> str:
-    if instance_url.strip():
-        return instance_url.rstrip("/")
-    return _DEFAULT_API_DOMAIN
-
-
 @register_source("zoho")
 class ZohoConnector:
     def __init__(self, source: Source) -> None:
@@ -125,13 +118,21 @@ class ZohoConnector:
             raise RuntimeError(f"Zoho token refresh failed: {response.text}")
         return response.json()
 
+    def _api_base(self, instance_url: str) -> str:
+        base = (instance_url or "").strip() or (self._source.oauth.default_instance_url or "")
+        if not base:
+            raise RuntimeError(
+                f"Source {self.id}: instance_url missing and oauth.default_instance_url unset"
+            )
+        return base.rstrip("/")
+
     async def describe_object(
         self, instance_url: str, access_token: str, object_name: str
     ) -> list[SourceField]:
         api_version = self._source.schema.api_version
         if not api_version:
             raise RuntimeError(f"Source {self.id}: schema.api_version is required for describe")
-        url = f"{_api_base(instance_url)}/crm/{api_version}/settings/fields"
+        url = f"{self._api_base(instance_url)}/crm/{api_version}/settings/fields"
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
             response = await client.get(
                 url,

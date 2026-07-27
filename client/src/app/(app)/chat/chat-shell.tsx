@@ -26,7 +26,7 @@ import type { ProjectResponse } from "@/lib/types";
  * Project selection stays inside /chat (no separate /project route).
  */
 export function ChatShell() {
-  const { loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [projectHydrated, setProjectHydrated] = useState(false);
   const [activeProject, setActiveProject] = useState<ProjectResponse | null>(null);
   const [session, setSession] = useState<StoredChatSession | null>(null);
@@ -34,10 +34,29 @@ export function ChatShell() {
   const [newChatLoading, setNewChatLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const userId = user?.id;
+
   useEffect(() => {
-    setActiveProject(loadStoredProject());
+    if (authLoading) return;
+
+    if (!userId) {
+      clearSession();
+      clearProject();
+      setActiveProject(null);
+      setProjectHydrated(true);
+      return;
+    }
+
+    const stored = loadStoredProject();
+    if (!stored || stored.user_id !== userId) {
+      clearSession();
+      clearProject();
+      setActiveProject(null);
+    } else {
+      setActiveProject(stored);
+    }
     setProjectHydrated(true);
-  }, []);
+  }, [authLoading, userId]);
 
   const handleProjectSelect = useCallback((project: ProjectResponse) => {
     setError(null);
@@ -55,14 +74,17 @@ export function ChatShell() {
   }, []);
 
   const handleNewChat = useCallback(async () => {
-    if (!activeProject || newChatLoading) return;
+    if (!user || !activeProject || newChatLoading) return;
 
     setNewChatLoading(true);
     setError(null);
 
     try {
       clearSession();
-      const next = await createServerSession(activeProject.id, { forceNew: true });
+      const next = await createServerSession(activeProject.id, {
+        userId: user.id,
+        forceNew: true,
+      });
       setSession(next);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
@@ -70,12 +92,13 @@ export function ChatShell() {
     } finally {
       setNewChatLoading(false);
     }
-  }, [activeProject, newChatLoading]);
+  }, [user, activeProject, newChatLoading]);
 
   useEffect(() => {
-    if (authLoading || !projectHydrated || !activeProject) return;
+    if (authLoading || !user || !projectHydrated || !activeProject) return;
 
     const project = activeProject;
+    const userId = user.id;
     let cancelled = false;
 
     async function bootstrapSession() {
@@ -83,7 +106,7 @@ export function ChatShell() {
       setError(null);
 
       try {
-        const next = await createServerSession(project.id);
+        const next = await createServerSession(project.id, { userId });
         if (!cancelled) {
           setSession(next);
           setSessionLoading(false);
@@ -103,7 +126,7 @@ export function ChatShell() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, projectHydrated, activeProject]);
+  }, [authLoading, user, projectHydrated, activeProject]);
 
   if (authLoading || !projectHydrated) {
     return (
