@@ -9,7 +9,15 @@ aliases: [google, google ads, adwords, youtube]
 connector: google_offline_conversions
 
 oauth:
-  start_path: /api/auth/google?dest=google_offline_conversions
+  start_path: /connections/destinations/google_offline_conversions/authorize
+  callback_path: /connections/destinations/google_offline_conversions/callback
+  pkce: true
+  client_id_env: GOOGLE_CLIENT_ID
+  client_secret_env: GOOGLE_CLIENT_SECRET
+  redirect_uri_env: GOOGLE_CALLBACK_URL
+  scope_env: GOOGLE_OAUTH_SCOPE
+  authorize_url: https://accounts.google.com/o/oauth2/v2/auth
+  token_url: https://oauth2.googleapis.com/token
 
 product_group: google
 group_default: true

@@ -189,6 +189,16 @@ export interface AuthorizeConnectionResponse {
   state: string;
 }
 
+export interface DestinationAuthorizeResponse {
+  auth_url: string;
+  state: string;
+}
+
+export interface DestinationConnectionStatusResponse {
+  connected: boolean;
+  destination_id: string;
+}
+
 export interface SourceConnectionStatusResponse {
   connected: boolean;
   instance_url: string | null;
@@ -276,16 +286,35 @@ export const api = {
       `/api/connections/sources/${encodeURIComponent(sourceId)}/status?project_id=${encodeURIComponent(projectId)}`,
     ),
 
-  /** Mock-connect a destination when live OAuth credentials are unavailable. */
-  mockConnectConnection: (
-    connectorSlug: string,
+  /** Start OAuth for a destination connector via the Next.js BFF. */
+  authorizeDestination: (
+    destinationId: string,
+    projectId: string,
+  ): Promise<DestinationAuthorizeResponse> =>
+    bffRequest<DestinationAuthorizeResponse>(
+      `/api/connections/destinations/${encodeURIComponent(destinationId)}/authorize?project_id=${encodeURIComponent(projectId)}`,
+      { method: "POST" },
+    ),
+
+  /** Connection status for a destination on the active project. */
+  getDestinationConnectionStatus: (
+    destinationId: string,
+    projectId: string,
+  ): Promise<DestinationConnectionStatusResponse> =>
+    bffRequest<DestinationConnectionStatusResponse>(
+      `/api/connections/destinations/${encodeURIComponent(destinationId)}/status?project_id=${encodeURIComponent(projectId)}`,
+    ),
+
+  /** Mock-connect a destination (Meta: pixel_id + access_token; Google: refresh_token). */
+  mockConnectDestination: (
+    destinationId: string,
     projectId: string,
     body: Record<string, string>,
-  ): Promise<void> =>
-    bffRequest<void>(
-      `/api/connections/${connectorSlug}?project_id=${encodeURIComponent(projectId)}`,
+  ): Promise<DestinationConnectionStatusResponse> =>
+    bffRequest<DestinationConnectionStatusResponse>(
+      `/api/connections/destinations/${encodeURIComponent(destinationId)}/mock-connect?project_id=${encodeURIComponent(projectId)}`,
       {
-        method: "PATCH",
+        method: "POST",
         body,
       },
     ),

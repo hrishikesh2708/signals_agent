@@ -8,7 +8,15 @@ aliases: [meta, facebook, instagram, fb]
 connector: meta_capi
 
 oauth:
-  start_path: /api/auth/meta
+  start_path: /connections/destinations/meta_capi/authorize
+  callback_path: /connections/destinations/meta_capi/callback
+  pkce: false
+  client_id_env: META_APP_ID
+  client_secret_env: META_APP_SECRET
+  redirect_uri_env: META_CALLBACK_URL
+  scope_env: META_OAUTH_SCOPE
+  authorize_url: https://www.facebook.com/v21.0/dialog/oauth
+  token_url: https://graph.facebook.com/v21.0/oauth/access_token
 
 product_group: meta
 group_default: true

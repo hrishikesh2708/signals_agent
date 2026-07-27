@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
 
 from app.destinations.exceptions import DestinationConfigError, DestinationRegistryError
 from app.destinations.loader import load_all_destinations
+from app.destinations.protocol import DestinationConnector
+from app.destinations.register import registered_connector_classes
 from app.destinations.spec import Destination
 
 GOOGLE_OFFLINE_CONVERSIONS = "google_offline_conversions"
@@ -13,9 +16,19 @@ GOOGLE_CUSTOMER_MATCH = "google_customer_match"
 VALID_PLATFORMS = frozenset({"google", "meta"})
 
 
+def env_value(name: str, *, default: str | None = None) -> str:
+    value = os.environ.get(name, "").strip()
+    if value:
+        return value
+    if default is not None:
+        return default
+    raise DestinationRegistryError(f"Missing required environment variable: {name}")
+
+
 @dataclass(frozen=True)
 class DestinationRegistry:
     destinations: tuple[Destination, ...]
+    _connectors: dict[str, DestinationConnector]
 
     @property
     def destination_ids(self) -> frozenset[str]:
@@ -26,6 +39,12 @@ class DestinationRegistry:
             if destination.id == dest_id:
                 return destination
         return None
+
+    def get_connector(self, dest_id: str) -> DestinationConnector:
+        connector = self._connectors.get(dest_id)
+        if connector is None:
+            raise KeyError(f"No connector registered for destination {dest_id!r}")
+        return connector
 
     def destinations_by_id(self) -> dict[str, Destination]:
         return {entry.id: entry for entry in self.destinations}
@@ -111,9 +130,25 @@ class DestinationRegistry:
 
 
 def _build_registry() -> DestinationRegistry:
+    # Ensure connector classes are registered before we look them up.
+    from app.destinations import connectors as _connectors  # noqa: F401
+
+    connector_classes = registered_connector_classes()
     all_destinations = load_all_destinations()
     enabled = [destination for destination in all_destinations.values() if destination.enabled]
-    return DestinationRegistry(destinations=tuple(enabled))
+
+    for destination in enabled:
+        if connector_classes.get(destination.id) is None:
+            raise DestinationRegistryError(
+                f"Enabled destination {destination.id!r} has config but no connector class registered"
+            )
+
+    connectors: dict[str, DestinationConnector] = {}
+    for destination in enabled:
+        connector_cls = connector_classes[destination.id]
+        connectors[destination.id] = connector_cls(destination)
+
+    return DestinationRegistry(destinations=tuple(enabled), _connectors=connectors)
 
 
 @lru_cache
@@ -126,6 +161,10 @@ def get_destination_registry() -> DestinationRegistry:
 
 def get_destination(dest_id: str) -> Destination | None:
     return get_destination_registry().get_destination(dest_id)
+
+
+def get_connector(dest_id: str) -> DestinationConnector:
+    return get_destination_registry().get_connector(dest_id)
 
 
 def list_destinations() -> list[Destination]:

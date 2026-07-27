@@ -46,8 +46,19 @@ class SourcePhase(TypedDict):
     object_hitl_prompted: bool  # False until Visit A ask messages are sent
 
 
+class DestinationsPhase(TypedDict):
+    """Post-object destination connection check (check_channels HITL)."""
+
+    destination_ids: list[str]  # from intent.destinations
+    statuses: dict[str, str]  # id → connected | skipped | not_connected
+    skipped: list[str]
+    status: Literal["pending", "complete"]
+    channels_hitl_prompted: bool
+
+
 __all__ = [
     "CONFIDENCE_THRESHOLD",
+    "DestinationsPhase",
     "GraphInput",
     "INTENT_MAX_ATTEMPTS",
     "IntentOpenQuestion",
@@ -69,6 +80,7 @@ class SignalsState(TypedDict):
     scope: ScopePhase | None
     intent: IntentPhase | None
     source: NotRequired[SourcePhase | None]
+    destinations: NotRequired[DestinationsPhase | None]
 
 
 class GraphInput(TypedDict):

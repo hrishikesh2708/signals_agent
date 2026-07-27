@@ -4,45 +4,68 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { InterruptCardProps } from "@/components/chat/interrupts/interrupt-card-props";
-import type {
-  SelectOption,
-  CanonicalMappingRow,
-  ChannelConnectionStatus,
-  MappingDestination,
-  MappingReviewRow,
-  UnresolvedField,
-} from "@/lib/interrupt-types";
+import type { ChannelConnectionStatus } from "@/lib/interrupt-types";
 import { api } from "@/lib/api";
-import { connectSourceViaOAuth } from "@/lib/oauth-popup";
-import { CHANNEL_AVATAR_COLORS, MOCK_ONLY_SLUGS, META_SLUGS } from "@/components/chat/interrupts/platform-colors";
+import { connectDestinationViaOAuth } from "@/lib/oauth-popup";
+import {
+  CHANNEL_AVATAR_COLORS,
+  GOOGLE_SLUGS,
+  META_SLUGS,
+} from "@/components/chat/interrupts/platform-colors";
 
-export function CheckChannelsInterruptCard({ payload, sessionId, onApprove }: InterruptCardProps) {
+function isMetaSlug(ch: ChannelConnectionStatus): boolean {
+  const slug = ch.connector_slug ?? ch.id;
+  return META_SLUGS.has(ch.id) || META_SLUGS.has(slug);
+}
+
+function isGoogleSlug(ch: ChannelConnectionStatus): boolean {
+  const slug = ch.connector_slug ?? ch.id;
+  return GOOGLE_SLUGS.has(ch.id) || GOOGLE_SLUGS.has(slug);
+}
+
+export function CheckChannelsInterruptCard({ payload, onApprove }: InterruptCardProps) {
   const channels = (payload.channels ?? []) as ChannelConnectionStatus[];
-  const pendingChannel = channels.find((ch) => ch.status !== "connected" && ch.status !== "skipped");
+  const pendingChannel = channels.find(
+    (ch) => ch.status !== "connected" && ch.status !== "skipped",
+  );
+  const connectedCount = channels.filter((ch) => ch.status === "connected").length;
   const allSettled = !pendingChannel;
+  const canConfirm = allSettled && connectedCount >= 1;
 
   const [connecting, setConnecting] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Mock metadata form state (for Meta)
   const [mockFormFor, setMockFormFor] = useState<string | null>(null);
+
+  // Meta mock fields
   const [pixelId, setPixelId] = useState("123456789012345");
-  const [adAccountId, setAdAccountId] = useState("act_mock_123");
+  const [accessToken, setAccessToken] = useState("");
+
+  // Google mock fields
+  const [refreshToken, setRefreshToken] = useState("");
+
+  function connectorAndProject(ch: ChannelConnectionStatus): {
+    connectorSlug: string;
+    projectId: string;
+  } | null {
+    const connectorSlug = ch.connector_slug ?? ch.id;
+    const projectId = ch.project_id;
+    if (!connectorSlug || !projectId) return null;
+    return { connectorSlug, projectId };
+  }
 
   async function handleConnect(ch: ChannelConnectionStatus) {
-    const connectorSlug = (ch as Record<string, unknown>).connector_slug as string | undefined ?? ch.id;
-    const projectId = (ch as Record<string, unknown>).project_id as string | undefined;
-
-    if (!connectorSlug || !projectId) {
+    const ctx = connectorAndProject(ch);
+    if (!ctx) {
       setErrors((e) => ({ ...e, [ch.id]: "Missing connector or project context." }));
       return;
     }
 
     setConnecting(ch.id);
     setErrors((e) => ({ ...e, [ch.id]: "" }));
+    setMockFormFor(null);
 
     try {
-      const result = await connectSourceViaOAuth(connectorSlug, projectId);
+      const result = await connectDestinationViaOAuth(ctx.connectorSlug, ctx.projectId);
       if (result.success) {
         onApprove({ action: "connected", platform_id: ch.id });
       } else {
@@ -50,31 +73,43 @@ export function CheckChannelsInterruptCard({ payload, sessionId, onApprove }: In
         setConnecting(null);
       }
     } catch (err) {
-      setErrors((e) => ({ ...e, [ch.id]: err instanceof Error ? err.message : "Unexpected error" }));
+      setErrors((e) => ({
+        ...e,
+        [ch.id]: err instanceof Error ? err.message : "Unexpected error",
+      }));
       setConnecting(null);
     }
   }
 
-  async function handleMockConnect(ch: ChannelConnectionStatus, overrides?: { pixelId?: string; adAccountId?: string }) {
-    const connectorSlug = (ch as Record<string, unknown>).connector_slug as string | undefined ?? ch.id;
-    const projectId = (ch as Record<string, unknown>).project_id as string | undefined;
-    if (!connectorSlug || !projectId) return;
+  async function handleMockConnect(
+    ch: ChannelConnectionStatus,
+    body: Record<string, string>,
+  ) {
+    const ctx = connectorAndProject(ch);
+    if (!ctx) {
+      setErrors((e) => ({ ...e, [ch.id]: "Missing connector or project context." }));
+      return;
+    }
 
     setConnecting(ch.id);
     setMockFormFor(null);
     setErrors((e) => ({ ...e, [ch.id]: "" }));
 
     try {
-      const body: Record<string, string> = {};
-      if (overrides?.pixelId) body.pixel_id = overrides.pixelId;
-      if (overrides?.adAccountId) body.ad_account_id = overrides.adAccountId;
-
-      await api.mockConnectConnection(connectorSlug, projectId, body);
+      await api.mockConnectDestination(ctx.connectorSlug, ctx.projectId, body);
       onApprove({ action: "connected", platform_id: ch.id });
     } catch (err) {
-      setErrors((e) => ({ ...e, [ch.id]: err instanceof Error ? err.message : "Mock connect failed" }));
+      setErrors((e) => ({
+        ...e,
+        [ch.id]: err instanceof Error ? err.message : "Mock connect failed",
+      }));
       setConnecting(null);
     }
+  }
+
+  function openMockForm(ch: ChannelConnectionStatus) {
+    setMockFormFor((current) => (current === ch.id ? null : ch.id));
+    setErrors((e) => ({ ...e, [ch.id]: "" }));
   }
 
   return (
@@ -89,12 +124,11 @@ export function CheckChannelsInterruptCard({ payload, sessionId, onApprove }: In
             const isConnected = ch.status === "connected";
             const isSkipped = ch.status === "skipped";
             const isLoading = connecting === ch.id;
-            const isMockOnly = MOCK_ONLY_SLUGS.has(ch.id) || MOCK_ONLY_SLUGS.has(
-              (ch as Record<string, unknown>).connector_slug as string ?? ""
-            );
             const avatarColor = CHANNEL_AVATAR_COLORS[ch.id] ?? "#6B7280";
             const initial = ch.label.charAt(0).toUpperCase();
-            const showMetaForm = mockFormFor === ch.id;
+            const showMockForm = mockFormFor === ch.id;
+            const meta = isMetaSlug(ch);
+            const google = isGoogleSlug(ch);
 
             return (
               <div
@@ -102,7 +136,6 @@ export function CheckChannelsInterruptCard({ payload, sessionId, onApprove }: In
                 className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden"
               >
                 <div className="flex items-center gap-3 px-4 py-3">
-                  {/* Platform avatar */}
                   <div
                     className="h-9 w-9 shrink-0 rounded-lg flex items-center justify-center text-white text-sm font-bold"
                     style={{ backgroundColor: avatarColor }}
@@ -110,23 +143,16 @@ export function CheckChannelsInterruptCard({ payload, sessionId, onApprove }: In
                     {initial}
                   </div>
 
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-[var(--foreground)]">{ch.label}</p>
                     {ch.detail && (
                       <p className="text-xs text-[var(--muted-foreground)] truncate">{ch.detail}</p>
-                    )}
-                    {isMockOnly && !isConnected && !isSkipped && (
-                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
-                        No live credentials — mock connect available
-                      </p>
                     )}
                     {errors[ch.id] && (
                       <p className="text-xs text-red-500 mt-0.5">{errors[ch.id]}</p>
                     )}
                   </div>
 
-                  {/* Status badge or action buttons */}
                   {isConnected ? (
                     <span className="shrink-0 rounded-full border border-green-500 px-3 py-1 text-xs font-medium text-green-600 dark:text-green-400">
                       Connected
@@ -135,40 +161,30 @@ export function CheckChannelsInterruptCard({ payload, sessionId, onApprove }: In
                     <span className="shrink-0 rounded-full border border-[var(--border)] px-3 py-1 text-xs font-medium text-[var(--muted-foreground)]">
                       Skipped
                     </span>
-                  ) : isMockOnly ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 border-amber-400 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                      disabled={isLoading || connecting !== null}
-                      onClick={() => {
-                        if (META_SLUGS.has(ch.id) || META_SLUGS.has(
-                          (ch as Record<string, unknown>).connector_slug as string ?? ""
-                        )) {
-                          setMockFormFor(showMetaForm ? null : ch.id);
-                        } else {
-                          void handleMockConnect(ch);
-                        }
-                      }}
-                    >
-                      {isLoading ? "Connecting…" : "Mock connect"}
-                    </Button>
                   ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="shrink-0"
-                      disabled={isLoading || connecting !== null}
-                      onClick={() => handleConnect(ch)}
-                    >
-                      {isLoading ? "Opening…" : "Connect"}
-                    </Button>
+                    <div className="flex shrink-0 gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={isLoading || connecting !== null}
+                        onClick={() => void handleConnect(ch)}
+                      >
+                        {isLoading ? "Opening…" : "Connect"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={isLoading || connecting !== null}
+                        onClick={() => openMockForm(ch)}
+                      >
+                        Mock
+                      </Button>
+                    </div>
                   )}
                 </div>
 
-                {/* Meta metadata form — shown inline when "Mock connect" clicked */}
-                {showMetaForm && (
+                {showMockForm && meta && (
                   <div className="border-t border-[var(--border)] bg-[var(--secondary)]/40 px-4 py-3 space-y-3">
                     <p className="text-xs font-medium text-[var(--foreground)]">
                       Meta mock credentials
@@ -188,14 +204,14 @@ export function CheckChannelsInterruptCard({ payload, sessionId, onApprove }: In
                       </div>
                       <div>
                         <label className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                          Ad Account ID
+                          Meta access token
                         </label>
                         <input
-                          type="text"
-                          value={adAccountId}
-                          onChange={(e) => setAdAccountId(e.target.value)}
+                          type="password"
+                          value={accessToken}
+                          onChange={(e) => setAccessToken(e.target.value)}
                           className="mt-1 w-full h-8 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-sm text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
-                          placeholder="act_mock_123"
+                          placeholder="EAAB…"
                         />
                       </div>
                     </div>
@@ -204,10 +220,14 @@ export function CheckChannelsInterruptCard({ payload, sessionId, onApprove }: In
                         type="button"
                         size="sm"
                         className="flex-1"
-                        disabled={!pixelId.trim() || connecting !== null}
+                        disabled={
+                          !pixelId.trim() || !accessToken.trim() || connecting !== null
+                        }
                         onClick={() => {
-                          const ch = channels.find((c) => c.id === mockFormFor);
-                          if (ch) void handleMockConnect(ch, { pixelId: pixelId.trim(), adAccountId: adAccountId.trim() });
+                          void handleMockConnect(ch, {
+                            pixel_id: pixelId.trim(),
+                            access_token: accessToken.trim(),
+                          });
                         }}
                       >
                         Save &amp; connect
@@ -224,13 +244,64 @@ export function CheckChannelsInterruptCard({ payload, sessionId, onApprove }: In
                     </div>
                   </div>
                 )}
+
+                {showMockForm && google && (
+                  <div className="border-t border-[var(--border)] bg-[var(--secondary)]/40 px-4 py-3 space-y-3">
+                    <p className="text-xs font-medium text-[var(--foreground)]">
+                      Google mock credentials
+                    </p>
+                    <div>
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                        Refresh token
+                      </label>
+                      <input
+                        type="password"
+                        value={refreshToken}
+                        onChange={(e) => setRefreshToken(e.target.value)}
+                        className="mt-1 w-full h-8 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-sm text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                        placeholder="1//…"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="flex-1"
+                        disabled={!refreshToken.trim() || connecting !== null}
+                        onClick={() => {
+                          void handleMockConnect(ch, {
+                            refresh_token: refreshToken.trim(),
+                          });
+                        }}
+                      >
+                        Save &amp; connect
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setMockFormFor(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {showMockForm && !meta && !google && (
+                  <div className="border-t border-[var(--border)] bg-[var(--secondary)]/40 px-4 py-3">
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      Mock connect is not configured for this destination.
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
 
-        {/* Primary CTA */}
-        {allSettled ? (
+        {canConfirm ? (
           <Button
             type="button"
             className="w-full bg-green-600 hover:bg-green-700 text-white"
@@ -243,31 +314,35 @@ export function CheckChannelsInterruptCard({ payload, sessionId, onApprove }: In
             <Button
               type="button"
               className="flex-1"
-              disabled={connecting !== null}
+              disabled={connecting !== null || !pendingChannel}
               onClick={() => {
                 if (!pendingChannel) return;
-                const isMock = MOCK_ONLY_SLUGS.has(pendingChannel.id);
-                if (isMock && META_SLUGS.has(pendingChannel.id)) {
-                  setMockFormFor(pendingChannel.id);
-                } else if (isMock) {
-                  void handleMockConnect(pendingChannel);
-                } else {
-                  void handleConnect(pendingChannel);
-                }
+                void handleConnect(pendingChannel);
               }}
             >
-              {connecting ? "Connecting…" : `Connect ${pendingChannel?.label ?? ""}`}
+              {connecting
+                ? "Connecting…"
+                : `Connect ${pendingChannel?.label ?? ""}`}
             </Button>
             <Button
               type="button"
               variant="outline"
               className="flex-1"
-              disabled={connecting !== null}
-              onClick={() => pendingChannel && onApprove({ action: "skip", platform_id: pendingChannel.id })}
+              disabled={connecting !== null || !pendingChannel}
+              onClick={() =>
+                pendingChannel &&
+                onApprove({ action: "skip", platform_id: pendingChannel.id })
+              }
             >
               Skip for now
             </Button>
           </div>
+        )}
+
+        {allSettled && connectedCount === 0 && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            Connect at least one destination to continue. Skipped destinations stay deferred.
+          </p>
         )}
       </CardContent>
     </Card>

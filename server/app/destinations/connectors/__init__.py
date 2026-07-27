@@ -1,3 +1,3 @@
-"""Destination connector stubs — implementations deferred to Phase 2."""
+"""Destination connector implementations (OAuth + mock metadata)."""
 
 from app.destinations.connectors import google, meta_capi  # noqa: F401

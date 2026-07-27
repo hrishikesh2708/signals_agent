@@ -3,6 +3,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from app.graph.nodes import (
+    check_channels_node,
     intent_capture_node,
     intent_clarify_node,
     scope_guard_node,
@@ -10,6 +11,7 @@ from app.graph.nodes import (
     source_connection_node,
 )
 from app.graph.routers import (
+    route_after_check_channels,
     route_after_intent_capture,
     route_after_intent_clarify,
     route_after_scope_guard,
@@ -26,6 +28,7 @@ def _build() -> StateGraph:
     graph.add_node("intent_clarify", intent_clarify_node)
     graph.add_node("source_connection", source_connection_node)
     graph.add_node("select_object", select_object_node)
+    graph.add_node("check_channels", check_channels_node)
 
     graph.add_edge(START, "scope_guard")
     graph.add_conditional_edges(
@@ -65,6 +68,15 @@ def _build() -> StateGraph:
         route_after_select_object,
         {
             "select_object": "select_object",
+            "check_channels": "check_channels",
+            "__end__": END,
+        },
+    )
+    graph.add_conditional_edges(
+        "check_channels",
+        route_after_check_channels,
+        {
+            "check_channels": "check_channels",
             "__end__": END,
         },
     )

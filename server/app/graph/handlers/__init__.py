@@ -3,6 +3,7 @@ from app.graph.handlers.catalogs import (
     format_signal_type_lines,
     format_source_lines,
 )
+from app.graph.handlers.check_channels import compose_check_channels_messages
 from app.graph.handlers.intent import (
     compose_intent_clarify_message,
     compose_intent_give_up_message,
@@ -16,6 +17,7 @@ from app.graph.handlers.select_object import compose_object_suggestion
 
 __all__ = [
     "classify_scope",
+    "compose_check_channels_messages",
     "compose_intent_clarify_message",
     "compose_intent_give_up_message",
     "compose_intent_summary",

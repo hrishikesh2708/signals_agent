@@ -126,3 +126,123 @@ export async function connectSourceViaOAuth(
     }, CLOSED_CHECK_MS);
   });
 }
+
+/**
+ * Authorize a destination, open the provider URL in a popup, wait for success via
+ * postMessage `{ type: "oauth_complete" }` and/or destination connection-status polling.
+ */
+export async function connectDestinationViaOAuth(
+  destinationId: string,
+  projectId: string,
+): Promise<OAuthPopupResult> {
+  const popup = window.open("about:blank", "oauth_popup", POPUP_FEATURES);
+  if (!popup) {
+    try {
+      const status = await api.getDestinationConnectionStatus(destinationId, projectId);
+      if (status.connected) {
+        return { success: true };
+      }
+    } catch {
+      // fall through
+    }
+    return {
+      success: false,
+      error: "Popup was blocked. Please allow popups for this site.",
+    };
+  }
+  const oauthWindow = popup;
+
+  try {
+    const { auth_url } = await api.authorizeDestination(destinationId, projectId);
+    oauthWindow.location.href = auth_url;
+  } catch (err) {
+    try {
+      oauthWindow.close();
+    } catch {
+      // ignore
+    }
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to start OAuth.",
+    };
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+    let closedPoll: ReturnType<typeof setInterval> | undefined;
+    let statusPoll: ReturnType<typeof setInterval> | undefined;
+
+    function finish(result: OAuthPopupResult) {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("message", onMessage);
+      if (closedPoll !== undefined) clearInterval(closedPoll);
+      if (statusPoll !== undefined) clearInterval(statusPoll);
+      try {
+        if (!oauthWindow.closed) oauthWindow.close();
+      } catch {
+        // ignore
+      }
+      resolve(result);
+    }
+
+    function onMessage(event: MessageEvent) {
+      if (event.data?.type !== "oauth_complete") return;
+      if (event.data.success) {
+        finish({ success: true });
+      } else {
+        finish({
+          success: false,
+          error:
+            typeof event.data.error === "string" && event.data.error
+              ? event.data.error
+              : "Connection failed. Please try again.",
+        });
+      }
+    }
+
+    window.addEventListener("message", onMessage);
+
+    statusPoll = setInterval(() => {
+      void (async () => {
+        if (settled) return;
+        try {
+          const status = await api.getDestinationConnectionStatus(
+            destinationId,
+            projectId,
+          );
+          if (status.connected) {
+            finish({ success: true });
+          }
+        } catch {
+          // keep waiting
+        }
+      })();
+    }, STATUS_POLL_MS);
+
+    closedPoll = setInterval(() => {
+      if (!oauthWindow.closed) return;
+      window.setTimeout(() => {
+        if (settled) return;
+        void (async () => {
+          try {
+            const status = await api.getDestinationConnectionStatus(
+              destinationId,
+              projectId,
+            );
+            if (status.connected) {
+              finish({ success: true });
+              return;
+            }
+          } catch {
+            // fall through
+          }
+          finish({
+            success: false,
+            error: "OAuth window closed before completing.",
+          });
+        })();
+      }, 250);
+    }, CLOSED_CHECK_MS);
+  });
+}

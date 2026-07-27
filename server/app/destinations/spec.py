@@ -9,6 +9,14 @@ class OAuthSpec(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     start_path: str
+    callback_path: str
+    pkce: bool = False
+    client_id_env: str
+    client_secret_env: str
+    redirect_uri_env: str
+    scope_env: str
+    authorize_url: str
+    token_url: str
 
 
 class DestinationField(BaseModel):

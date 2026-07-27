@@ -192,37 +192,80 @@ const MOCK_SOURCE_CONNECTION: ApprovalInterruptPayload = {
 };
 
 // ── 5. check_channels (3 variants) ───────────────────────────────────────
-// Agent sends a plain chat message first, then fires this interrupt.
-// detail should always be present when connected (shows which account).
+// Agent sends LLM chat messages first, then fires this interrupt.
+// Ids are connector ids (meta_capi, google_offline_conversions).
 //
 // Inbound:  { type, channels: ChannelConnectionStatus[] }
-// Outbound: { action: "connect" | "skip" | "confirm_all", platform_id?: string }
+// Outbound: { action: "connected" | "skip" | "confirm_all", platform_id?: string }
 
-// Variant A — some pending
+const DEV_PROJECT_ID = "proj_dev_preview";
+
+// Variant A — some pending (Connect + Mock on Google; Connected pill on Meta)
 const MOCK_CHECK_CHANNELS_MIXED: ApprovalInterruptPayload = {
   type: "check_channels",
   channels: [
-    { id: "meta",   label: "Meta",   status: "connected",     detail: "Acme Business Manager · CRM CAPI ready" },
-    { id: "google", label: "Google", status: "not_connected", detail: "No active connection · Offline Conversions" },
+    {
+      id: "meta_capi",
+      label: "Meta",
+      status: "connected",
+      detail: "Acme Business Manager · CRM Conversions API",
+      connector_slug: "meta_capi",
+      project_id: DEV_PROJECT_ID,
+    },
+    {
+      id: "google_offline_conversions",
+      label: "Google",
+      status: "not_connected",
+      detail: "No active connection · Offline Conversions",
+      connector_slug: "google_offline_conversions",
+      project_id: DEV_PROJECT_ID,
+    },
   ],
 };
 
-// Variant B — one expired
+// Variant B — one skipped, one pending
 const MOCK_CHECK_CHANNELS_EXPIRED: ApprovalInterruptPayload = {
   type: "check_channels",
   channels: [
-    { id: "meta",     label: "Meta",     status: "connected", detail: "Acme Business Manager · CRM CAPI ready" },
-    { id: "tiktok",   label: "TikTok",   status: "expired",   detail: "Token expired 3 days ago · Events API" },
-    { id: "linkedin", label: "LinkedIn", status: "connected", detail: "Acme Corp Page · Conversions API ready" },
+    {
+      id: "meta_capi",
+      label: "Meta",
+      status: "connected",
+      detail: "Acme Business Manager · CRM Conversions API",
+      connector_slug: "meta_capi",
+      project_id: DEV_PROJECT_ID,
+    },
+    {
+      id: "google_offline_conversions",
+      label: "Google",
+      status: "skipped",
+      detail: "Skipped for now",
+      connector_slug: "google_offline_conversions",
+      project_id: DEV_PROJECT_ID,
+    },
   ],
 };
 
-// Variant C — all connected → green "All connected — continue" CTA
+// Variant C — all connected → green "All settled — continue" CTA
 const MOCK_CHECK_CHANNELS_ALL_CONNECTED: ApprovalInterruptPayload = {
   type: "check_channels",
   channels: [
-    { id: "meta",   label: "Meta",   status: "connected", detail: "Acme Business Manager · CRM CAPI ready" },
-    { id: "google", label: "Google", status: "connected", detail: "Acme Ads · Offline Conversions ready" },
+    {
+      id: "meta_capi",
+      label: "Meta",
+      status: "connected",
+      detail: "Acme Business Manager · CRM Conversions API",
+      connector_slug: "meta_capi",
+      project_id: DEV_PROJECT_ID,
+    },
+    {
+      id: "google_offline_conversions",
+      label: "Google",
+      status: "connected",
+      detail: "Acme Ads · Offline Conversions",
+      connector_slug: "google_offline_conversions",
+      project_id: DEV_PROJECT_ID,
+    },
   ],
 };
 
@@ -280,7 +323,7 @@ const MOCK_RESOLVE_FIELDS_RESOLVED: ApprovalInterruptPayload = {
 
 const LEGACY_STAGES: { label: string; tag: string; payload: ApprovalInterruptPayload }[] = [
   { label: "Check channels (mixed)",             tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_MIXED         },
-  { label: "Check channels (with expired)",      tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_EXPIRED       },
+  { label: "Check channels (with skipped)",      tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_EXPIRED       },
   { label: "Check channels (all connected)",     tag: "check_channels",   payload: MOCK_CHECK_CHANNELS_ALL_CONNECTED },
   { label: "Mapping review (single dest)",       tag: "mapping_review",   payload: MOCK_MAPPING_REVIEW_SINGLE   },
   { label: "Mapping review (multi dest)",        tag: "mapping_review",   payload: MOCK_MAPPING_REVIEW_MULTI    },

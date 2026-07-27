@@ -35,7 +35,17 @@ def route_after_source_connection(state: dict) -> str:
 def route_after_select_object(state: dict) -> str:
     source = state.get("source") or {}
     if source.get("object_name"):
-        return "__end__"
+        return "check_channels"
     if source.get("status") == "connected":
         return "select_object"
+    return "__end__"
+
+
+def route_after_check_channels(state: dict) -> str:
+    destinations = state.get("destinations") or {}
+    if destinations.get("status") == "complete":
+        return "__end__"
+    source = state.get("source") or {}
+    if source.get("object_name"):
+        return "check_channels"
     return "__end__"

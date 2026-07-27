@@ -17,6 +17,8 @@ export const CHANNEL_AVATAR_COLORS: Record<string, string> = {
   meta_capi:      "#1877F2",
   google:         "#EA4335",
   google_offline: "#EA4335",
+  google_offline_conversions: "#EA4335",
+  google_customer_match: "#FBBC04",
   google_dm:      "#FBBC04",
   tiktok:         "#010101",
   snapchat:       "#FFFC00",
@@ -25,12 +27,21 @@ export const CHANNEL_AVATAR_COLORS: Record<string, string> = {
   bing:           "#008373",
 };
 
-// Slugs that use mock connect (either no real creds, or redirect URI not yet registered)
+// Slugs that need Meta mock form (pixel_id + access_token)
+export const META_SLUGS = new Set(["meta_capi", "meta"]);
+
+// Slugs that need Google mock form (refresh_token)
+export const GOOGLE_SLUGS = new Set([
+  "google",
+  "google_offline",
+  "google_offline_conversions",
+  "google_customer_match",
+  "google_dm",
+]);
+
+// Legacy: previously used to hide live Connect. Kept for any remaining callers.
 export const MOCK_ONLY_SLUGS = new Set([
   "meta_capi", "meta",
   "google_ads", "google_offline", "google_offline_conversions", "google_customer_match", "google_dm",
   "tiktok", "snapchat", "linkedin", "twitter", "bing",
 ]);
-
-// Slugs that need extra metadata collected before mock-connecting
-export const META_SLUGS = new Set(["meta_capi", "meta"]);

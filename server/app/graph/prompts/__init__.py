@@ -1,3 +1,4 @@
+from app.graph.prompts.check_channels import build_check_channels_intro_prompt
 from app.graph.prompts.intent import (
     build_intent_clarify_prompt,
     build_intent_extract_prompt,
@@ -14,6 +15,7 @@ from app.graph.prompts.scope import (
 from app.graph.prompts.select_object import build_select_object_suggest_prompt
 
 __all__ = [
+    "build_check_channels_intro_prompt",
     "build_intent_clarify_prompt",
     "build_intent_extract_prompt",
     "build_intent_give_up_prompt",

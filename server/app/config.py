@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
+    # Google Ads API (live dry-run / account checks after OAuth)
+    google_ads_developer_token: str = ""
+    google_api_version: str = "v21"
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: str | list[str]) -> list[str]:
